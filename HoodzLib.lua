@@ -1,14 +1,17 @@
 --[[
-	Hoodz UI Library  (open source)  v1.1
+	Hoodz UI Library  (open source)  v1.2
 
-	* Full-bleed pixelated red/black gradient background that flows toward the top-left
-	* Full-screen transparent loading screen with a smooth crossfade into the window
-	* Logo badge (top-left) with rounded corners + animated gradient outline.
-	  The logo is auto-downloaded from your GitHub repo the first time and cached in the workspace folder.
-	* Rounded everything: window, panels, tabs, rows, toggles, sliders, buttons
-	* Categories, tabs, sections, toggles, sliders, buttons, labels
-	* Draggable (mouse + touch), auto-scales on phones / tablets / PC
-	* RightShift or the round "H" button shows / hides the UI
+	* Pixelated red/black gradient background that flows toward the top-left
+	* Full-screen transparent loading screen -> smooth crossfade into the window
+	* The LOGO is the show/hide button (top-left, rounded, animated gradient outline)
+	* Built-in music: "substance.mp3" plays loud + underwater while loading, then
+	  settles into a low, clean loop. Turn it on/off or change the volume in the
+	  built-in Settings tab (saved between runs).
+	* Everything is built in: the logo and the song auto-download from your GitHub
+	  repo on first run and are cached in the executor workspace. No manual setup.
+	* Rounded UI, categories, tabs, sections, toggles, sliders, buttons, labels
+	* Draggable (mouse + touch), scales to phones / tablets / PC
+	* RightShift or the logo shows / hides the UI
 
 	Usage:
 		local Hoodz = loadstring(game:HttpGet("<raw url>"))()
@@ -16,18 +19,28 @@
 		local tab = UI:CreateCategory("Player"):CreateTab("Movement")
 		tab:CreateToggle({ Name = "Speed", Callback = function(on) end })
 		tab:CreateSlider({ Name = "Walk Speed", Min = 16, Max = 100, Default = 16, Callback = function(v) end })
+
+	Optional config: Title, Subtitle, LoadingTime, ToggleKey, Music (default true),
+	MusicVolume (0-100), Image, ImageUrl, MusicFile, MusicUrl
 ]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local HttpService = game:GetService("HttpService")
 
 local Library = {}
 Library.__index = Library
-Library.Version = "1.1"
+Library.Version = "1.2"
 
-local DEFAULT_LOGO_URL = "https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/IMG_3411.jpeg"
+local REPO = "https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/"
+local DEFAULT_LOGO_FILE, DEFAULT_LOGO_URL = "IMG_3411.jpeg", REPO .. "IMG_3411.jpeg"
+local DEFAULT_MUSIC_FILE, DEFAULT_MUSIC_URL = "substance.mp3", REPO .. "substance.mp3"
+local SETTINGS_FILE = "Hoodz_Settings.json"
+
+local LOUD = 2 -- volume while loading (underwater)
 
 ----------------------------------------------------------------------
 -- Theme
@@ -38,7 +51,7 @@ local Theme = {
 	Stroke = Color3.fromRGB(78, 24, 32),
 	Red = Color3.fromRGB(255, 72, 84),
 	RedDark = Color3.fromRGB(150, 14, 30),
-	Light = Color3.fromRGB(255, 150, 158), -- light red (sliders / accents)
+	Light = Color3.fromRGB(255, 150, 158),
 	LightDeep = Color3.fromRGB(255, 108, 118),
 	Text = Color3.fromRGB(245, 236, 237),
 	Dim = Color3.fromRGB(168, 146, 150),
@@ -58,7 +71,6 @@ local OUTLINE = ColorSequence.new({
 	ColorSequenceKeypoint.new(1, Theme.Red),
 })
 
--- palette for the pixel gradient (black -> deep red -> bright red)
 local PAL = 16
 local PALETTE = (function()
 	local keys = {
@@ -174,8 +186,8 @@ local function getGuiParent()
 	return Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Uses the local file if it exists, otherwise downloads it once from the repo and caches it.
-local function resolveImage(file, url)
+-- Local file first; otherwise download once from the repo and cache it in the workspace.
+local function resolveFile(file, url, minSize)
 	if not (getcustomasset and isfile) then
 		return nil
 	end
@@ -187,13 +199,13 @@ local function resolveImage(file, url)
 		local ok, data = pcall(function()
 			return game:HttpGet(url)
 		end)
-		if ok and type(data) == "string" and #data > 200 and data:sub(1, 3) ~= "404" then
+		if ok and type(data) == "string" and #data > (minSize or 200) and data:sub(1, 3) ~= "404" then
 			pcall(writefile, file, data)
 		end
 	end
 	if exists() then
 		local ok, asset = pcall(getcustomasset, file)
-		if ok and asset then
+		if ok and asset and asset ~= "" then
 			return asset
 		end
 	end
@@ -201,7 +213,7 @@ local function resolveImage(file, url)
 end
 
 ----------------------------------------------------------------------
--- Shared animation loop (one connection for everything, 30Hz)
+-- Shared animation loop (one connection, 30Hz)
 ----------------------------------------------------------------------
 function Library:_startLoop()
 	local acc = 0
@@ -227,9 +239,7 @@ function Library:_addTask(fn)
 end
 
 ----------------------------------------------------------------------
--- Pixel gradient mosaic: a grid of cells coloured by a drifting plasma.
--- Every wave has positive coefficients + time, so the whole pattern flows toward the TOP-LEFT.
--- Cells only get a property write when their palette colour actually changes.
+-- Pixel gradient mosaic (flows toward the top-left)
 ----------------------------------------------------------------------
 function Library:_mosaic(container, w, h, cell, alpha, isActive)
 	local holder = create("Frame", {
@@ -250,7 +260,7 @@ function Library:_mosaic(container, w, h, cell, alpha, isActive)
 				BackgroundColor3 = PALETTE[1],
 				BackgroundTransparency = alpha,
 				Position = UDim2.fromOffset(i * cell, j * cell),
-				Size = UDim2.fromOffset(cell + 1, cell + 1), -- +1 hides seams when scaled
+				Size = UDim2.fromOffset(cell + 1, cell + 1),
 			}, holder)
 			last[n] = 0
 			p1[n] = (i + j) * 0.26
@@ -259,7 +269,7 @@ function Library:_mosaic(container, w, h, cell, alpha, isActive)
 		end
 	end
 
-	local acc = 1 -- force a first paint
+	local acc = 1
 	local sin, floor = math.sin, math.floor
 	local function update(dt, now)
 		if not isActive() then
@@ -290,6 +300,228 @@ function Library:_mosaic(container, w, h, cell, alpha, isActive)
 end
 
 ----------------------------------------------------------------------
+-- Settings (saved to the workspace so Music on/off + volume persist)
+----------------------------------------------------------------------
+function Library:_loadSettings(config)
+	local s = {
+		Music = config.Music ~= false,
+		Volume = math.clamp(config.MusicVolume or 30, 0, 100),
+	}
+	if isfile and readfile then
+		local ok, raw = pcall(function()
+			if isfile(SETTINGS_FILE) then
+				return readfile(SETTINGS_FILE)
+			end
+		end)
+		if ok and raw then
+			local ok2, data = pcall(function()
+				return HttpService:JSONDecode(raw)
+			end)
+			if ok2 and type(data) == "table" then
+				if type(data.Music) == "boolean" then
+					s.Music = data.Music
+				end
+				if type(data.Volume) == "number" then
+					s.Volume = math.clamp(data.Volume, 0, 100)
+				end
+			end
+		end
+	end
+	return s
+end
+
+function Library:_saveSettings()
+	if not writefile or self._saveQueued then
+		return
+	end
+	self._saveQueued = true
+	task.delay(0.5, function()
+		self._saveQueued = false
+		pcall(function()
+			writefile(SETTINGS_FILE, HttpService:JSONEncode(self.Settings))
+		end)
+	end)
+end
+
+----------------------------------------------------------------------
+-- Music: loud + underwater while loading -> low + clean loop afterwards
+----------------------------------------------------------------------
+function Library:_createSound(asset)
+	if self._sound then
+		return
+	end
+	local sound = create("Sound", {
+		Name = "HoodzMusic",
+		SoundId = asset,
+		Looped = true,
+		Volume = 0,
+	}, SoundService)
+	-- underwater: muffled highs, slight wobble, watery reverb
+	self._eq = create("EqualizerSoundEffect", { LowGain = 3, MidGain = -14, HighGain = -60 }, sound)
+	self._chorus = create("ChorusSoundEffect", { Depth = 0.5, Mix = 0.45, Rate = 0.8 }, sound)
+	self._reverb = create("ReverbSoundEffect", {
+		DecayTime = 2.8,
+		Density = 1,
+		Diffusion = 1,
+		DryLevel = -2,
+		WetLevel = -5,
+	}, sound)
+	self._sound = sound
+end
+
+function Library:_neutralizeFx()
+	for _, fx in ipairs({ self._eq, self._chorus, self._reverb }) do
+		if fx then
+			fx.Enabled = false
+		end
+	end
+end
+
+function Library:_loadMusic()
+	if self._sound then
+		return true
+	end
+	if self._musicLoading then
+		return false
+	end
+	self._musicLoading = true
+	local asset = resolveFile(self._musicFile, self._musicUrl, 2000)
+	self._musicLoading = false
+	if asset then
+		self:_createSound(asset)
+	end
+	return self._sound ~= nil
+end
+
+function Library:_startLoadingMusic()
+	local s = self._sound
+	if not (s and self._musicOn) then
+		return
+	end
+	s.Volume = 0
+	s:Play()
+	tween(s, 0.8, { Volume = LOUD })
+end
+
+-- clean, low loop (used when the song becomes available after loading, or is re-enabled)
+function Library:_playNormal()
+	local s = self._sound
+	if not s then
+		return
+	end
+	self:_neutralizeFx()
+	if s.IsPaused then
+		s:Resume()
+	elseif not s.IsPlaying then
+		s.Volume = 0
+		s:Play()
+	end
+	tween(s, 0.8, { Volume = self.Settings.Volume / 100 })
+end
+
+-- smooth transition: underwater/loud -> normal/low
+function Library:_settleMusic()
+	self._phase = "normal"
+	local s = self._sound
+	if not s then
+		return
+	end
+	if self._musicOn and s.IsPlaying then
+		local T = 2.5
+		tween(self._eq, T, { LowGain = 0, MidGain = 0, HighGain = 0 }, Enum.EasingStyle.Sine)
+		tween(self._chorus, T, { Mix = 0 }, Enum.EasingStyle.Sine)
+		tween(self._reverb, T, { DryLevel = 0, WetLevel = -80 }, Enum.EasingStyle.Sine)
+		tween(s, T, { Volume = self.Settings.Volume / 100 }, Enum.EasingStyle.Sine).Completed:Connect(function()
+			if self._phase == "normal" then
+				self:_neutralizeFx()
+			end
+		end)
+	else
+		self:_neutralizeFx()
+		if s.IsPlaying then
+			s:Pause()
+		end
+	end
+end
+
+function Library:SetMusic(on)
+	on = on and true or false
+	if self._musicOn == on then
+		return
+	end
+	self._musicOn = on
+	self.Settings.Music = on
+	self:_saveSettings()
+	if self._musicToggle and self._musicToggle:Get() ~= on then
+		self._musicToggle:Set(on, true)
+	end
+
+	local s = self._sound
+	if self._phase == "loading" then
+		if s then
+			if on then
+				self:_startLoadingMusic()
+			else
+				tween(s, 0.4, { Volume = 0 }).Completed:Connect(function()
+					if not self._musicOn then
+						s:Pause()
+					end
+				end)
+			end
+		end
+		return
+	end
+
+	if on then
+		if s then
+			self:_playNormal()
+		else
+			task.spawn(function()
+				if self:_loadMusic() and self._musicOn then
+					self:_playNormal()
+				end
+			end)
+		end
+	elseif s then
+		tween(s, 0.5, { Volume = 0 }).Completed:Connect(function()
+			if not self._musicOn then
+				s:Pause()
+			end
+		end)
+	end
+end
+
+function Library:SetVolume(pct)
+	pct = math.clamp(pct, 0, 100)
+	self.Settings.Volume = pct
+	self:_saveSettings()
+	if self._volSlider and self._volSlider:Get() ~= pct then
+		self._volSlider:Set(pct)
+	end
+	if self._phase == "normal" and self._musicOn and self._sound then
+		tween(self._sound, 0.1, { Volume = pct / 100 })
+	end
+end
+
+----------------------------------------------------------------------
+-- Single drag owner (fixes sliders "following" each other)
+----------------------------------------------------------------------
+function Library:_beginDrag(input, update, onEnd)
+	self:_endDrag()
+	self._drag = { input = input, update = update, onEnd = onEnd }
+end
+
+function Library:_endDrag()
+	local d = self._drag
+	if d then
+		self._drag = nil
+		if d.onEnd then
+			d.onEnd()
+		end
+	end
+end
+
+----------------------------------------------------------------------
 -- Classes
 ----------------------------------------------------------------------
 local Category = {}
@@ -307,9 +539,15 @@ function Library.new(config)
 	self._visible = false
 	self._loaded = false
 	self._token = 0
+	self._phase = "idle"
 	self._catMap = {}
 	self._catCount = 0
 	self._tabs = {}
+	self._hasLogo = false
+	self._musicFile = config.MusicFile or DEFAULT_MUSIC_FILE
+	self._musicUrl = config.MusicUrl or DEFAULT_MUSIC_URL
+	self.Settings = self:_loadSettings(config)
+	self._musicOn = self.Settings.Music
 
 	local function track(c)
 		table.insert(self._conns, c)
@@ -322,7 +560,7 @@ function Library.new(config)
 	local parent = getGuiParent()
 	local name = config.Name or "Hoodz"
 
-	-- Full-screen gui (window + loading). ScreenInsets None = covers notches / cutouts too.
+	-- Full-screen gui (window + loading). ScreenInsets None = covers notches too.
 	local gui = create("ScreenGui", {
 		Name = name,
 		ResetOnSpawn = false,
@@ -334,7 +572,7 @@ function Library.new(config)
 		gui.ScreenInsets = Enum.ScreenInsets.None
 	end)
 
-	-- Safe-area gui (logo badge + open button stay clear of the notch / topbar)
+	-- Safe-area gui (logo button stays clear of notch / topbar)
 	local safe = create("ScreenGui", {
 		Name = name .. "Safe",
 		ResetOnSpawn = false,
@@ -352,7 +590,7 @@ function Library.new(config)
 	end
 	self.Gui, self.SafeGui = gui, safe
 
-	-- Window (CanvasGroup => rounded clipping + whole-window fade) ----------
+	-- Window (CanvasGroup => rounded clipping + whole-window fade) -------------
 	local main = create("CanvasGroup", {
 		Name = "Window",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -368,7 +606,6 @@ function Library.new(config)
 	local _, mainStrokeGrad = gradStroke(main, 2, OUTLINE)
 	self.Main = main
 
-	-- animated pixel gradient + soft shade for readability
 	self:_mosaic(main, WIN_W, WIN_H, 18, 0, function()
 		return main.Visible
 	end)
@@ -387,7 +624,27 @@ function Library.new(config)
 		}),
 	}, shade)
 
-	-- Top bar ---------------------------------------------------------------
+	-- Glass sheen: a soft diagonal highlight sweeps across the window every few seconds
+	local sheen = create("Frame", {
+		Name = "Sheen",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		ZIndex = 10,
+	}, main)
+	local sheenGrad = create("UIGradient", {
+		Rotation = 25,
+		Offset = Vector2.new(2, 0),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.4, 1),
+			NumberSequenceKeypoint.new(0.5, 0.93),
+			NumberSequenceKeypoint.new(0.6, 1),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+	}, sheen)
+
+	-- Top bar -----------------------------------------------------------------
 	local top = create("Frame", {
 		Name = "TopBar",
 		Size = UDim2.new(1, 0, 0, 44),
@@ -396,28 +653,59 @@ function Library.new(config)
 		BorderSizePixel = 0,
 		ZIndex = 3,
 	}, main)
+
 	local titleRow = create("Frame", {
-		Position = UDim2.fromOffset(18, 0),
+		Position = UDim2.fromOffset(16, 0),
 		Size = UDim2.new(1, -70, 1, 0),
 		BackgroundTransparency = 1,
 	}, top)
 	create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, 8),
+		Padding = UDim.new(0, 9),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, titleRow)
+	local accent = create("Frame", {
+		Size = UDim2.fromOffset(4, 20),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+		LayoutOrder = 0,
+	}, titleRow)
+	corner(accent, UDim.new(1, 0))
+	grad(accent, LIGHTGRAD, 90)
 	local title = label(titleRow, config.Title or "Hoodz", 20, WHITE, nil, true)
 	title.AutomaticSize = Enum.AutomaticSize.X
 	title.Size = UDim2.fromOffset(0, 24)
 	title.TextTruncate = Enum.TextTruncate.None
 	title.LayoutOrder = 1
 	grad(title, TEXTGRAD, 0)
-	local sub = label(titleRow, config.Subtitle or ("v" .. Library.Version), 12, Theme.Dim)
-	sub.AutomaticSize = Enum.AutomaticSize.X
-	sub.Size = UDim2.fromOffset(0, 24)
-	sub.TextTruncate = Enum.TextTruncate.None
-	sub.LayoutOrder = 2
+	local chip = create("Frame", {
+		Size = UDim2.fromOffset(40, 18),
+		BackgroundColor3 = Color3.fromRGB(60, 22, 30),
+		BackgroundTransparency = 0.1,
+		BorderSizePixel = 0,
+		LayoutOrder = 2,
+	}, titleRow)
+	corner(chip, UDim.new(1, 0))
+	solidStroke(chip, 1, Theme.Light, 0.6)
+	local chipText = label(chip, config.Subtitle or ("v" .. Library.Version), 11, Theme.Light, Enum.TextXAlignment.Center, true)
+	chipText.Size = UDim2.fromScale(1, 1)
+
+	-- animated shimmer line under the bar
+	local shimmer = create("Frame", {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 2),
+		BackgroundColor3 = Theme.Light,
+		BorderSizePixel = 0,
+	}, top)
+	local shimmerGrad = create("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 0.05),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+	}, shimmer)
 
 	local close = create("TextButton", {
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -440,7 +728,7 @@ function Library.new(config)
 		tween(close, 0.15, { BackgroundColor3 = Theme.Row })
 	end)
 
-	-- Sidebar panel -----------------------------------------------------------
+	-- Sidebar -------------------------------------------------------------------
 	local sidePanel = create("Frame", {
 		Name = "SidePanel",
 		Position = UDim2.fromOffset(10, 52),
@@ -477,7 +765,7 @@ function Library.new(config)
 	footer.Position = UDim2.new(0, 0, 1, -4)
 	footer.Size = UDim2.new(1, 0, 0, 18)
 
-	-- Content panel -----------------------------------------------------------
+	-- Content --------------------------------------------------------------------
 	local contentPanel = create("Frame", {
 		Name = "ContentPanel",
 		Position = UDim2.fromOffset(176, 52),
@@ -503,13 +791,12 @@ function Library.new(config)
 		BorderSizePixel = 0,
 	}, contentPanel)
 
-	local pages = create("Frame", {
+	self.Content = create("Frame", {
 		Name = "Pages",
 		Position = UDim2.fromOffset(0, 44),
 		Size = UDim2.new(1, 0, 1, -44),
 		BackgroundTransparency = 1,
 	}, contentPanel)
-	self.Content = pages
 
 	-- Responsive scale -------------------------------------------------------
 	local badgeScale
@@ -530,89 +817,96 @@ function Library.new(config)
 		track(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale))
 	end
 
-	-- Dragging (mouse + touch) -----------------------------------------------
-	local dragging, dragStart, startPos = false, nil, nil
-	track(top.InputBegan:Connect(function(input)
-		if isPointer(input) then
-			dragging, dragStart, startPos = true, input.Position, main.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
-			end)
+	-- Global drag controller: ONE owner at a time, always released on input end ---
+	track(UserInputService.InputChanged:Connect(function(input)
+		local d = self._drag
+		if not d then
+			return
+		end
+		local st = d.input.UserInputState
+		if st == Enum.UserInputState.End or st == Enum.UserInputState.Cancel then
+			self:_endDrag()
+			return
+		end
+		if isMove(input) then
+			d.update(input)
 		end
 	end))
-	track(UserInputService.InputChanged:Connect(function(input)
-		if dragging and isMove(input) then
-			local cam = workspace.CurrentCamera
-			local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
-			local d = input.Position - dragStart
-			main.Position = UDim2.fromScale(
-				math.clamp(startPos.X.Scale + d.X / vp.X, 0.05, 0.95),
-				math.clamp(startPos.Y.Scale + d.Y / vp.Y, 0.05, 0.95)
-			)
+	track(UserInputService.InputEnded:Connect(function(input)
+		local d = self._drag
+		if d and (input == d.input or input.UserInputType == d.input.UserInputType) then
+			self:_endDrag()
 		end
 	end))
 
-	-- Logo badge (top-left, safe area) -----------------------------------------
-	local badge = create("ImageLabel", {
-		Name = "Badge",
+	-- Window dragging (top bar)
+	track(top.InputBegan:Connect(function(input)
+		if isPointer(input) then
+			local startPos, startInput = main.Position, input.Position
+			self:_beginDrag(input, function(i)
+				local cam = workspace.CurrentCamera
+				local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+				local d = i.Position - startInput
+				main.Position = UDim2.fromScale(
+					math.clamp(startPos.X.Scale + d.X / vp.X, 0.05, 0.95),
+					math.clamp(startPos.Y.Scale + d.Y / vp.Y, 0.05, 0.95)
+				)
+			end)
+		end
+	end))
+
+	-- Logo = the show/hide button (top-left, safe area) -------------------------
+	local badge = create("ImageButton", {
+		Name = "Logo",
 		Position = UDim2.fromOffset(12, 12),
 		Size = UDim2.fromOffset(64, 64),
-		BackgroundColor3 = Theme.Black,
+		BackgroundColor3 = Theme.Red,
 		BackgroundTransparency = 1,
 		Image = "",
 		ImageTransparency = 1,
 		ScaleType = Enum.ScaleType.Crop,
+		AutoButtonColor = false,
 		Visible = false,
 	}, safe)
 	corner(badge, UDim.new(0, 16))
 	local badgeStroke, badgeGrad = gradStroke(badge, 2.5, OUTLINE)
 	badgeStroke.Transparency = 1
 	badgeScale = create("UIScale", {}, badge)
-	self.Badge, self.BadgeStroke = badge, badgeStroke
-	self._hasBadge = false
+	local letter = label(badge, "H", 30, WHITE, Enum.TextXAlignment.Center, true)
+	letter.Size = UDim2.fromScale(1, 1)
+	letter.TextTransparency = 1
+	letter.Visible = false
+	self.Badge, self.BadgeStroke, self._badgeLetter = badge, badgeStroke, letter
 	rescale()
 
-	-- Round "H" open button (mobile friendly)
-	local openBtn = create("TextButton", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -12, 0, 12),
-		Size = UDim2.fromOffset(44, 44),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Text = "",
-		AutoButtonColor = false,
-		Visible = false,
-	}, safe)
-	local openBg = create("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = WHITE,
-		BorderSizePixel = 0,
-	}, openBtn)
-	corner(openBg, UDim.new(0, 14))
-	grad(openBg, REDGRAD, 45)
-	solidStroke(openBg, 1.5, Theme.Light, 0.35)
-	local openTxt = label(openBtn, "H", 20, WHITE, Enum.TextXAlignment.Center, true)
-	openTxt.Size = UDim2.fromScale(1, 1)
-	openTxt.ZIndex = 2
-	self._openBtn = openBtn
+	track(badge.Activated:Connect(function()
+		if not self._loaded then
+			return
+		end
+		self:Toggle()
+		badgeStroke.Thickness = 5
+		tween(badgeStroke, 0.25, { Thickness = 2.5 })
+	end))
 
-	-- Outline animation (one shared loop)
+	-- shared animation loop tasks
 	self:_addTask(function(_, now)
 		if main.Visible then
 			mainStrokeGrad.Rotation = (now * 60) % 360
+			shimmerGrad.Offset = Vector2.new(((now * 0.45) % 2) - 1, 0)
+			local ph = (now % 8) / 8
+			sheenGrad.Offset = Vector2.new(ph < 0.3 and (-1 + ph / 0.3 * 2) or 2, 0)
 		end
 		if badge.Visible then
 			badgeGrad.Rotation = (now * 90) % 360
+		end
+		-- underwater wobble while loading
+		if self._phase == "loading" and self._eq and self._eq.Enabled then
+			self._eq.HighGain = -55 - 12 * (0.5 + 0.5 * math.sin(now * 0.9))
 		end
 	end)
 
 	track(close.Activated:Connect(function()
 		self:SetVisible(false)
-	end))
-	track(openBtn.Activated:Connect(function()
-		self:Toggle()
 	end))
 	local key = config.ToggleKey or Enum.KeyCode.RightShift
 	track(UserInputService.InputBegan:Connect(function(input, gp)
@@ -631,37 +925,36 @@ end
 ----------------------------------------------------------------------
 -- Show / hide (smooth)
 ----------------------------------------------------------------------
+function Library:_badgeTo(alpha, t)
+	local b = self.Badge
+	if self._hasLogo then
+		tween(b, t, { ImageTransparency = alpha })
+	else
+		tween(b, t, { BackgroundTransparency = alpha })
+		tween(self._badgeLetter, t, { TextTransparency = alpha })
+	end
+end
+
 function Library:SetVisible(v)
 	if not self._loaded then
 		return
 	end
 	self._visible = v
 	self._token += 1
+	self:_endDrag()
 	local tok = self._token
-	local main, badge = self.Main, self.Badge
+	local main = self.Main
 	if v then
 		main.Visible = true
 		tween(main, 0.25, { GroupTransparency = 0 })
-		if self._hasBadge then
-			badge.Visible = true
-			tween(badge, 0.25, { ImageTransparency = 0 })
-			tween(self.BadgeStroke, 0.25, { Transparency = 0 })
-		end
 	else
 		tween(main, 0.2, { GroupTransparency = 1 }).Completed:Connect(function()
 			if self._token == tok then
 				main.Visible = false
 			end
 		end)
-		if self._hasBadge then
-			tween(badge, 0.2, { ImageTransparency = 1 })
-			tween(self.BadgeStroke, 0.2, { Transparency = 1 }).Completed:Connect(function()
-				if self._token == tok then
-					badge.Visible = false
-				end
-			end)
-		end
 	end
+	self:_badgeTo(v and 0 or 0.45, 0.25) -- logo dims when the UI is hidden
 end
 
 function Library:Toggle()
@@ -669,7 +962,40 @@ function Library:Toggle()
 end
 
 ----------------------------------------------------------------------
--- Loading screen (full screen, transparent) -> smooth crossfade into the window
+-- Built-in Settings tab (always the last category)
+----------------------------------------------------------------------
+function Library:_buildSettings()
+	local cat = self:CreateCategory("Hoodz")
+	cat.Frame.LayoutOrder = 1000000
+	local tab = cat:CreateTab("Settings")
+	tab:CreateSection("Audio")
+	self._musicToggle = tab:CreateToggle({
+		Name = "Background music",
+		Default = self.Settings.Music,
+		NoInit = true,
+		Callback = function(on)
+			self:SetMusic(on)
+		end,
+	})
+	self._volSlider = tab:CreateSlider({
+		Name = "Music volume",
+		Min = 0,
+		Max = 100,
+		Default = self.Settings.Volume,
+		Increment = 1,
+		NoInit = true,
+		Callback = function(v)
+			self:SetVolume(v)
+		end,
+	})
+	tab:CreateSection("Interface")
+	tab:CreateLabel("RightShift or the logo = show / hide")
+	tab:CreateLabel("Drag the top bar to move the window")
+	self.SettingsTab = tab
+end
+
+----------------------------------------------------------------------
+-- Loading screen (full screen, transparent) -> smooth crossfade
 ----------------------------------------------------------------------
 function Library:_runLoading(config)
 	local gui = self.Gui
@@ -684,7 +1010,7 @@ function Library:_runLoading(config)
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundColor3 = Theme.Black,
-		BackgroundTransparency = 0.3, -- see-through
+		BackgroundTransparency = 0.3,
 		BorderSizePixel = 0,
 		ZIndex = 50,
 	}, gui)
@@ -704,7 +1030,6 @@ function Library:_runLoading(config)
 	}, grp)
 
 	local title = label(card, string.upper(config.Title or "Hoodz"), 46, WHITE, Enum.TextXAlignment.Center, true)
-	title.Position = UDim2.fromOffset(0, 0)
 	title.Size = UDim2.new(1, 0, 0, 56)
 	grad(title, TEXTGRAD, 0)
 
@@ -730,47 +1055,73 @@ function Library:_runLoading(config)
 	status.Position = UDim2.fromOffset(0, 88)
 	status.Size = UDim2.new(1, 0, 0, 20)
 
-	-- logo download/cache happens in parallel with the bar
-	local asset, assetDone = nil, false
+	-- assets download in parallel (logo + music); both are cached after the first run
+	self._phase = "loading"
+	local logoDone, logoAsset = false, nil
 	task.spawn(function()
-		asset = resolveImage(config.Image or "IMG_3411.jpeg", config.ImageUrl or DEFAULT_LOGO_URL)
-		assetDone = true
+		logoAsset = resolveFile(config.Image or DEFAULT_LOGO_FILE, config.ImageUrl or DEFAULT_LOGO_URL, 200)
+		logoDone = true
 	end)
+	local musicDone = not self._musicOn
+	if self._musicOn then
+		task.spawn(function()
+			self:_loadMusic()
+			if self._sound then
+				if self._phase == "loading" then
+					self:_startLoadingMusic() -- loud + underwater
+				elseif self._musicOn then
+					self:_playNormal()
+				end
+			end
+			musicDone = true
+		end)
+	end
 
-	local duration = config.LoadingTime or 2
-	local steps = { "Starting up", "Loading assets", "Building interface", "Ready" }
-	for i, text in ipairs(steps) do
+	local q = (config.LoadingTime or 2.5) / 4
+	for i, text in ipairs({ "Starting up", "Loading assets", "Building interface" }) do
 		status.Text = text
-		tween(fill, duration / #steps, { Size = UDim2.fromScale(i / #steps, 1) }, Enum.EasingStyle.Sine)
-		task.wait(duration / #steps)
+		tween(fill, q, { Size = UDim2.fromScale(i / 4, 1) }, Enum.EasingStyle.Sine)
+		task.wait(q)
+	end
+	if not (logoDone and musicDone) then
+		status.Text = "Downloading assets"
 	end
 	local t0 = os.clock()
-	while not assetDone and os.clock() - t0 < 5 do
+	while not (logoDone and musicDone) and os.clock() - t0 < 10 do
 		task.wait(0.05)
 	end
-	if asset then
-		self.Badge.Image = asset
-		self._hasBadge = true
-	end
-	task.wait(0.15)
+	status.Text = "Ready"
+	tween(fill, 0.3, { Size = UDim2.fromScale(1, 1) })
+	task.wait(0.35)
 
-	-- smooth transition: window rises + fades in while the loading screen fades out
+	-- logo
+	local badge = self.Badge
+	if logoAsset then
+		badge.Image = logoAsset
+		self._hasLogo = true
+	else
+		badge.BackgroundColor3 = Theme.Red
+		self._badgeLetter.Visible = true
+	end
+
+	self:_buildSettings()
 	self._loaded = true
 	self._visible = true
-	self._openBtn.Visible = true
+
+	-- smooth transition: window rises + fades in, loading fades out,
+	-- and the song settles from loud/underwater to low/clean
 	local main = self.Main
 	main.Position = UDim2.fromScale(0.5, 0.55)
 	main.Visible = true
 	tween(main, 0.8, { GroupTransparency = 0, Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Quint)
-	if self._hasBadge then
-		task.delay(0.45, function()
-			if self.Badge.Parent and self._visible then
-				self.Badge.Visible = true
-				tween(self.Badge, 0.8, { ImageTransparency = 0 })
-				tween(self.BadgeStroke, 0.8, { Transparency = 0 })
-			end
-		end)
-	end
+	self:_settleMusic()
+	task.delay(0.45, function()
+		if badge.Parent then
+			badge.Visible = true
+			tween(self.BadgeStroke, 0.8, { Transparency = 0 })
+			self:_badgeTo(self._visible and 0 or 0.45, 0.8)
+		end
+	end)
 	tween(grp, 0.7, { GroupTransparency = 1 }, Enum.EasingStyle.Sine).Completed:Wait()
 	active = false
 	removeMosaic()
@@ -778,6 +1129,7 @@ function Library:_runLoading(config)
 end
 
 function Library:Destroy()
+	self:_endDrag()
 	if self._conn then
 		self._conn:Disconnect()
 	end
@@ -785,6 +1137,9 @@ function Library:Destroy()
 		c:Disconnect()
 	end
 	self._tasks = {}
+	if self._sound then
+		self._sound:Destroy()
+	end
 	self.Gui:Destroy()
 	self.SafeGui:Destroy()
 end
@@ -812,7 +1167,6 @@ function Library:CreateCategory(name)
 	return cat
 end
 
--- Convenience: UI:CreateTab("Name", "Category")
 function Library:CreateTab(name, categoryName)
 	categoryName = categoryName or "General"
 	local cat = self._catMap[categoryName] or self:CreateCategory(categoryName)
@@ -825,7 +1179,11 @@ function Library:_select(tab)
 		local on = t == tab
 		t.Page.Visible = on
 		tween(t.Bg, 0.18, { BackgroundTransparency = on and 0.05 or 1 })
-		tween(t.Text, 0.18, { TextColor3 = on and WHITE or Theme.Dim })
+		tween(t.Bar, 0.2, { Size = UDim2.fromOffset(3, on and 14 or 0) })
+		tween(t.Text, 0.2, {
+			TextColor3 = on and WHITE or Theme.Dim,
+			Position = UDim2.fromOffset(on and 20 or 14, 0),
+		})
 	end
 end
 
@@ -849,6 +1207,15 @@ function Category:CreateTab(name)
 	}, btn)
 	corner(bg, UDim.new(0, 10))
 	grad(bg, REDGRAD, 0)
+	local bar = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 7, 0.5, 0),
+		Size = UDim2.fromOffset(3, 0),
+		BackgroundColor3 = Theme.Light,
+		BorderSizePixel = 0,
+		ZIndex = 2,
+	}, btn)
+	corner(bar, UDim.new(1, 0))
 	local txt = label(btn, name, 14, Theme.Dim)
 	txt.Position = UDim2.fromOffset(14, 0)
 	txt.Size = UDim2.new(1, -20, 1, 0)
@@ -874,7 +1241,16 @@ function Category:CreateTab(name)
 		PaddingBottom = UDim.new(0, 10),
 	}, page)
 
-	local tab = setmetatable({ Window = lib, Page = page, Button = btn, Bg = bg, Text = txt, Name = name, _order = 0 }, Tab)
+	local tab = setmetatable({
+		Window = lib,
+		Page = page,
+		Button = btn,
+		Bg = bg,
+		Bar = bar,
+		Text = txt,
+		Name = name,
+		_order = 0,
+	}, Tab)
 	table.insert(lib._tabs, tab)
 	lib._track(btn.Activated:Connect(function()
 		lib:_select(tab)
@@ -918,7 +1294,15 @@ function Tab:CreateSection(text)
 	local l = label(self.Page, string.upper(text), 11, Theme.Light, nil, true)
 	l.Size = UDim2.new(1, 0, 0, 18)
 	l.LayoutOrder = self._order
-	create("UIPadding", { PaddingLeft = UDim.new(0, 4) }, l)
+	create("UIPadding", { PaddingLeft = UDim.new(0, 16) }, l)
+	local dot = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 4, 0.5, 0),
+		Size = UDim2.fromOffset(6, 6),
+		BackgroundColor3 = Theme.Light,
+		BorderSizePixel = 0,
+	}, l)
+	corner(dot, UDim.new(1, 0))
 end
 
 function Tab:CreateLabel(text)
@@ -1036,13 +1420,14 @@ function Tab:CreateToggle(opts)
 		obj:Set(not state)
 	end))
 
-	if opts.Default and opts.Callback then
+	if opts.Default and opts.Callback and not opts.NoInit then
 		task.spawn(opts.Callback, state)
 	end
 	return obj
 end
 
 function Tab:CreateSlider(opts)
+	local lib = self.Window
 	local min, max, inc = opts.Min or 0, opts.Max or 100, opts.Increment or 1
 	local value = math.clamp(opts.Default or min, min, max)
 	local r = row(self, 60)
@@ -1065,10 +1450,12 @@ function Tab:CreateSlider(opts)
 	local valLbl = label(chip, "", 12, Theme.Light, Enum.TextXAlignment.Center, true)
 	valLbl.Size = UDim2.fromScale(1, 1)
 
+	-- Active = true so touching the slider never starts a page scroll
 	local hit = create("Frame", {
 		Position = UDim2.new(0, 16, 0, 32),
 		Size = UDim2.new(1, -32, 0, 24),
 		BackgroundTransparency = 1,
+		Active = true,
 	}, r)
 	local track = create("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
@@ -1116,31 +1503,21 @@ function Tab:CreateSlider(opts)
 		apply(min + a * (max - min))
 	end
 
-	local dragging = false
 	local page = self.Page
-	local reg = self.Window._track
-	reg(hit.InputBegan:Connect(function(input)
+	lib._track(hit.InputBegan:Connect(function(input)
 		if isPointer(input) then
-			dragging = true
-			page.ScrollingEnabled = false -- don't scroll the page while sliding on touch
+			page.ScrollingEnabled = false
 			tween(thumb, 0.12, { Size = UDim2.fromOffset(24, 24) })
 			fromInput(input)
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-					page.ScrollingEnabled = true
-					tween(thumb, 0.15, { Size = UDim2.fromOffset(18, 18) })
-				end
+			-- only this slider owns the drag; releasing ALWAYS ends it
+			lib:_beginDrag(input, fromInput, function()
+				page.ScrollingEnabled = true
+				tween(thumb, 0.15, { Size = UDim2.fromOffset(18, 18) })
 			end)
 		end
 	end))
-	reg(UserInputService.InputChanged:Connect(function(input)
-		if dragging and isMove(input) then
-			fromInput(input)
-		end
-	end))
 
-	if opts.Callback then
+	if opts.Callback and not opts.NoInit then
 		task.spawn(opts.Callback, value)
 	end
 	return {
