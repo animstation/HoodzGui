@@ -1,0 +1,46 @@
+-- Put PixelRed.lua and IMG_3411.jpeg in your executor's workspace folder
+local PixelRed = loadstring(https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua))()
+
+local UI = PixelRed.new({
+	Title = "PIXELRED",
+	Image = "IMG_3411.jpeg", -- fades in top-left with a gradient outline
+	LoadingTime = 1.8,
+	ToggleKey = Enum.KeyCode.RightShift,
+})
+
+-- Category "Player" with two tabs
+local player = UI:CreateCategory("Player")
+
+local movement = player:CreateTab("Movement")
+movement:CreateToggle({
+	Name = "Speed Boost",
+	Default = false,
+	Callback = function(on)
+		print("Speed Boost:", on)
+	end,
+})
+movement:CreateSlider({
+	Name = "Walk Speed",
+	Min = 16,
+	Max = 100,
+	Default = 16,
+	Increment = 1,
+	Callback = function(v)
+		print("Walk Speed:", v)
+	end,
+})
+
+local visuals = player:CreateTab("Visuals")
+visuals:CreateToggle({ Name = "Highlights", Callback = function(on) print(on) end })
+visuals:CreateSlider({ Name = "Brightness", Min = 0, Max = 1, Default = 0.5, Increment = 0.05, Callback = print })
+
+-- Category "Misc"
+local misc = UI:CreateCategory("Misc")
+local settings = misc:CreateTab("Settings")
+settings:CreateLabel("PixelRed v1.0")
+settings:CreateButton({
+	Name = "Unload UI",
+	Callback = function()
+		UI:Destroy()
+	end,
+})
