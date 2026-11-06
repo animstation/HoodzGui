@@ -1,6 +1,5 @@
 -- Put PixelRed.lua and IMG_3411.jpeg in your executor's workspace folder
-local PixelRed = loadstring(https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua))()
-
+local PixelRed = loadstring(game:HttpGet("https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"))()
 local UI = PixelRed.new({
 	Title = "PIXELRED",
 	Image = "IMG_3411.jpeg", -- fades in top-left with a gradient outline
