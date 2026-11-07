@@ -1,1 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoodz UI Library – documentation</title>
+<meta name="description" content="Hoodz is an open-source Luau UI library with a pixel-gradient background, floating panels, built-in music and a smooth reload. Learn how to use it.">
+<meta name="color-scheme" content="dark">
+<style>
+  :root {
+    --bg: #080507;
+    --panel: #120b0e;
+    --panel-2: #190f13;
+    --line: #3a1219;
+    --red: #ff4854;
+    --red-deep: #96101e;
+    --light: #ff969e;
+    --text: #f5ecee;
+    --dim: #a8929a;
+    --code: #0d070a;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* pixel gradient backdrop (CSS only, flows toward the top-left) */
+  .backdrop {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(900px 500px at 8% 0%, rgba(255,72,84,.22), transparent 60%),
+      radial-gradient(700px 420px at 100% 100%, rgba(150,16,30,.28), transparent 60%),
+      var(--bg);
+  }
+  .backdrop::after {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+    background-size: 18px 18px;
+    animation: drift 14s linear infinite;
+  }
+  @keyframes drift { to { background-position: -18px -18px; } }
 
+  a { color: var(--light); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  code { background: rgba(255,72,84,.12); border: 1px solid rgba(255,72,84,.2); padding: 1px 7px; border-radius: 8px; font-size: .88em; color: #ffd5d9; }
+
+  /* nav */
+  nav {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 10px clamp(14px, 4vw, 40px);
+    background: rgba(8,5,7,.78); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .brand { font-weight: 800; letter-spacing: .3px; margin-right: 10px; background: linear-gradient(90deg,#ffbec3,var(--red)); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 18px; }
+  nav a.pill { color: var(--dim); padding: 6px 12px; border-radius: 999px; font-size: 14px; }
+  nav a.pill:hover { background: rgba(255,72,84,.14); color: var(--text); text-decoration: none; }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px) 80px; }
+  section { margin-top: 72px; }
+  h1, h2, h3 { line-height: 1.2; margin: 0 0 14px; }
+  h2 { font-size: clamp(24px, 4vw, 32px); display: flex; align-items: center; gap: 12px; }
+  h2::before { content: ""; width: 5px; height: 26px; border-radius: 99px; background: linear-gradient(var(--light), var(--red)); }
+  h3 { font-size: 18px; margin-top: 28px; color: #ffd5d9; }
+  p { margin: 0 0 14px; color: #dccdd1; }
+  .lead { font-size: clamp(17px, 2.4vw, 20px); color: var(--dim); max-width: 720px; }
+
+  /* hero */
+  .hero { padding: 72px 0 8px; }
+  .hero h1 { font-size: clamp(46px, 9vw, 84px); letter-spacing: -1px; background: linear-gradient(95deg, #ffd0d4, var(--red) 60%, var(--red-deep)); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 26px; }
+  .chip { padding: 5px 12px; border-radius: 999px; font-size: 13px; background: rgba(255,72,84,.1); border: 1px solid rgba(255,150,158,.35); color: var(--light); }
+
+  /* code blocks */
+  .code { position: relative; background: var(--code); border: 1px solid var(--line); border-radius: var(--radius); margin: 14px 0 22px; overflow: hidden; }
+  .code .bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px 8px 16px; background: rgba(255,72,84,.07); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--dim); letter-spacing: .4px; text-transform: uppercase; }
+  .code button { cursor: pointer; border: 1px solid rgba(255,150,158,.4); background: rgba(255,72,84,.12); color: var(--light); padding: 4px 12px; border-radius: 999px; font: inherit; font-size: 12px; text-transform: none; transition: background .15s; }
+  .code button:hover { background: rgba(255,72,84,.28); }
+  .code button.done { background: var(--red); color: #fff; border-color: var(--red); }
+  pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; color: #f3dfe2; tab-size: 4; }
+  .c { color: #8a6a72; } .k { color: #ff7d88; } .s { color: #ffc2a1; } .f { color: #ffd0d4; }
+
+  /* cards + grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 18px; }
+  .card { background: linear-gradient(160deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; font-size: 14.5px; color: var(--dim); }
+
+  /* layout diagram */
+  .diagram { margin: 22px 0; padding: 18px; border-radius: 22px; background: rgba(255,255,255,.02); border: 1px solid var(--line); }
+  .dg { display: grid; gap: 10px; grid-template-columns: 52px 118px 1fr; grid-template-rows: 46px 1fr 34px; height: 330px; max-width: 700px; margin: 0 auto; }
+  .isl { border-radius: 14px; border: 2px solid rgba(255,150,158,.45); background: linear-gradient(135deg, rgba(60,6,14,.9), rgba(16,6,10,.95)); position: relative; overflow: hidden; padding: 8px 10px; font-size: 11px; color: var(--light); }
+  .isl::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,72,84,.16), transparent 60%); }
+  .isl > * { position: relative; }
+  .isl.head { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 13px; }
+  .isl.rail { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; }
+  .dot { width: 28px; height: 28px; border-radius: 50%; background: #1c1014; border: 1.5px solid var(--line); display: grid; place-items: center; font-weight: 800; font-size: 12px; color: var(--dim); }
+  .dot.on { background: linear-gradient(135deg, var(--red), var(--red-deep)); border-radius: 9px; color: #fff; border-color: var(--light); }
+  .isl.tabs { display: flex; flex-direction: column; gap: 6px; }
+  .tab { padding: 6px 8px; border-radius: 9px; color: var(--dim); }
+  .tab.on { background: linear-gradient(90deg, var(--red), var(--red-deep)); color: #fff; }
+  .isl.main { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+  .tile { border-radius: 11px; background: #1b1014; border: 1px solid var(--line); padding: 8px; min-height: 52px; color: var(--dim); }
+  .tile.on { background: linear-gradient(135deg, rgba(255,72,84,.55), rgba(150,16,30,.55)); color: #fff; }
+  .tile.wide { grid-column: 1 / -1; min-height: 40px; }
+  .slider { height: 8px; border-radius: 99px; background: #2a1a1f; margin-top: 10px; position: relative; }
+  .slider::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 62%; border-radius: 99px; background: linear-gradient(90deg, var(--light), #ff6c76); }
+  .isl.dock { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 22px; margin-top: 18px; font-size: 14px; color: var(--dim); }
+  .legend b { color: var(--text); }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 560px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: rgba(255,72,84,.08); color: var(--light); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { white-space: nowrap; }
+
+  .note { border-left: 4px solid var(--red); background: rgba(255,72,84,.08); padding: 12px 16px; border-radius: 0 14px 14px 0; margin: 16px 0; color: #ead9dc; font-size: 15px; }
+
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 14px 0; }
+  .steps li { counter-increment: s; position: relative; padding: 10px 0 10px 50px; color: #dccdd1; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 8px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--red), var(--red-deep)); font-weight: 800; color: #fff; }
+
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin: 12px 0; }
+  summary { cursor: pointer; padding: 14px 18px; font-weight: 600; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 10px; border-radius: 50%; background: rgba(255,72,84,.18); color: var(--light); font-weight: 800; }
+  details[open] summary::before { content: "–"; }
+  details > div { padding: 0 18px 12px; }
+  details .code { margin: 0 0 12px; }
+
+  footer { text-align: center; color: var(--dim); font-size: 14px; padding: 40px 16px 60px; border-top: 1px solid var(--line); }
+  kbd { background: #1c1014; border: 1px solid var(--line); border-bottom-width: 2px; padding: 1px 7px; border-radius: 7px; font-size: .85em; }
+
+  @media (max-width: 640px) {
+    .dg { grid-template-columns: 40px 86px 1fr; height: 300px; }
+    .isl { font-size: 10px; padding: 6px 7px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .backdrop::after { animation: none; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"></div>
+
+<nav>
+  <span class="brand">Hoodz</span>
+  <a class="pill" href="#start">Quick start</a>
+  <a class="pill" href="#layout">Layout</a>
+  <a class="pill" href="#api">API</a>
+  <a class="pill" href="#music">Music</a>
+  <a class="pill" href="#reload">Reload</a>
+  <a class="pill" href="#test">Test</a>
+  <a class="pill" href="#help">Help</a>
+</nav>
+
+<main>
+  <header class="hero">
+    <h1>Hoodz</h1>
+    <p class="lead">An open-source Luau UI library with a pixel-gradient red and black background, floating panels instead of a boring window, built-in music with an underwater loading intro, and a one-line setup.</p>
+    <div class="chips">
+      <span class="chip">v1.3</span>
+      <span class="chip">Open source</span>
+      <span class="chip">Mobile + PC</span>
+      <span class="chip">Draggable</span>
+      <span class="chip">Auto-reload</span>
+    </div>
+    <div class="code" id="hero-code">
+      <div class="bar"><span>Luau</span><button type="button" data-copy>Copy</button></div>
+<pre><span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()
+<span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })
+
+<span class="k">local</span> tab = UI:<span class="f">CreateCategory</span>(<span class="s">"Player"</span>):<span class="f">CreateTab</span>(<span class="s">"Movement"</span>)
+tab:<span class="f">CreateToggle</span>({ Name = <span class="s">"Speed boost"</span>, Callback = <span class="k">function</span>(on) <span class="f">print</span>(on) <span class="k">end</span> })
+tab:<span class="f">CreateSlider</span>({ Name = <span class="s">"Walk speed"</span>, Min = 16, Max = 100, Default = 16, Callback = <span class="k">function</span>(v) <span class="f">print</span>(v) <span class="k">end</span> })</pre>
+    </div>
+  </header>
+
+  <section id="start">
+    <h2>Quick start</h2>
+    <ol class="steps">
+      <li><b>Put the files in your repo.</b> <code>HoodzLib.lua</code>, <code>IMG_3411.jpeg</code> (the logo) and <code>substance.mp3</code> (the song) go in the repo root on the <code>main</code> branch. Nothing else is needed.</li>
+      <li><b>Load the library</b> with the <code>loadstring</code> line above. The logo and the song download automatically the first time and are cached in your executor’s workspace folder.</li>
+      <li><b>Create the UI</b> with <code>Hoodz.new({ Title = "Hoodz" })</code>, then add categories, tabs and components.</li>
+      <li><b>Show or hide it</b> by tapping the logo in the top-left corner, or press <kbd>RightShift</kbd>.</li>
+    </ol>
+    <div class="note">You never configure the logo or the music by hand. If a download fails, the logo button shows a red “H” and the song stays silent; everything else still works.</div>
+
+    <div class="grid">
+      <div class="card"><h3>Pixel-gradient background</h3><p>One continuous red and black gradient made of pixel blocks flows toward the top-left behind every panel.</p></div>
+      <div class="card"><h3>Floating panels</h3><p>Header, category rail, tab list, tile grid and a dock. They move together and assemble one by one when loading finishes.</p></div>
+      <div class="card"><h3>Built-in audio</h3><p>Loud, underwater-sounding song while loading, then a low clean loop that crossfades with itself.</p></div>
+      <div class="card"><h3>Reload-safe</h3><p>Run the script twice and the old UI and music are replaced by the new code. No duplicates.</p></div>
+      <div class="card"><h3>All devices</h3><p>Scales to phones, tablets and PC. Touch sliders never scroll the page or drag each other.</p></div>
+      <div class="card"><h3>Saved settings</h3><p>Music on/off, volume and crossfade length are remembered between runs.</p></div>
+    </div>
+  </section>
+
+  <section id="layout">
+    <h2>The layout</h2>
+    <p>Hoodz does not use a single window with a sidebar. It uses separate rounded “islands” that share one background.</p>
+    <div class="diagram" role="img" aria-label="Diagram of the Hoodz layout: header on top, category rail, tab list and tile grid in the middle, dock at the bottom">
+      <div class="dg">
+        <div class="isl head"><span>Hoodz &nbsp; v1.3</span><span style="color:var(--dim);font-weight:500">Player / Movement</span><span>×</span></div>
+        <div class="isl rail"><div class="dot on">P</div><div class="dot">M</div><div class="dot">H</div></div>
+        <div class="isl tabs"><div style="font-weight:800;letter-spacing:.5px">PLAYER</div><div class="tab on">Movement</div><div class="tab">Visuals</div><div class="tab">Combat</div></div>
+        <div class="isl main">
+          <div class="tile on">Speed boost<br><b>ON</b></div>
+          <div class="tile">Highlights<br><b>OFF</b></div>
+          <div class="tile wide">Walk speed<div class="slider"></div></div>
+          <div class="tile on">Fly<br><b>ON</b></div>
+          <div class="tile">Noclip<br><b>OFF</b></div>
+        </div>
+        <div class="isl dock"><span>● Music ON</span><span style="color:var(--dim)">RightShift or logo = hide</span><span style="color:var(--dim)">v1.3</span></div>
+      </div>
+      <div class="legend">
+        <div><b>Header</b> – title, version chip, breadcrumb, close button. Drag it to move everything.</div>
+        <div><b>Rail</b> – one circle per category. The selected one turns into a rounded square.</div>
+        <div><b>Tabs</b> – the tabs of the selected category.</div>
+        <div><b>Tile grid</b> – toggles and buttons pair up two per row; sliders are full width.</div>
+        <div><b>Dock</b> – quick music switch and hints.</div>
+        <div><b>Logo</b> – the round-cornered image in the top-left of the screen. Tap it to hide or show the UI.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="api">
+    <h2>API reference</h2>
+
+    <h3>Hoodz.new(config)</h3>
+    <p>Creates the UI and starts the loading screen. Every option is optional.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Option</th><th>Default</th><th>What it does</th></tr>
+      <tr><td><code>Title</code></td><td><code>"Hoodz"</code></td><td>Name shown in the header and on the loading screen.</td></tr>
+      <tr><td><code>Subtitle</code></td><td><code>"v1.3"</code></td><td>Text of the small chip next to the title.</td></tr>
+      <tr><td><code>LoadingTime</code></td><td><code>2.5</code></td><td>Minimum seconds for the loading bar. First run may take longer while files download.</td></tr>
+      <tr><td><code>ToggleKey</code></td><td><code>Enum.KeyCode.RightShift</code></td><td>Key that shows or hides the UI.</td></tr>
+      <tr><td><code>Music</code></td><td><code>true</code></td><td>Default for the music switch. A saved setting overrides it.</td></tr>
+      <tr><td><code>MusicVolume</code></td><td><code>30</code></td><td>Default normal volume, 0 to 100.</td></tr>
+      <tr><td><code>CrossfadeTime</code></td><td><code>4</code></td><td>Seconds of overlap when the song loops, 1 to 10.</td></tr>
+      <tr><td><code>Image</code>, <code>ImageUrl</code></td><td>logo in the repo</td><td>Local file name and download link of the logo. Only change these to use a different logo.</td></tr>
+      <tr><td><code>MusicFile</code>, <code>MusicUrl</code></td><td>song in the repo</td><td>Local file name and download link of the song.</td></tr>
+      <tr><td><code>Name</code></td><td><code>"Hoodz"</code></td><td>Name of the ScreenGui. Keep the default so reloading can clean up leftovers.</td></tr>
+    </table></div>
+
+    <h3>UI methods</h3>
+    <div class="tablewrap"><table>
+      <tr><th>Method</th><th>Returns</th><th>What it does</th></tr>
+      <tr><td><code>UI:CreateCategory(name)</code></td><td>Category</td><td>Adds a circle to the rail. The first letter of the name is shown in the circle.</td></tr>
+      <tr><td><code>UI:CreateTab(name, categoryName?)</code></td><td>Tab</td><td>Shortcut: finds or creates the category, then adds the tab.</td></tr>
+      <tr><td><code>UI:SetVisible(bool)</code></td><td>–</td><td>Shows or hides the UI with a fade.</td></tr>
+      <tr><td><code>UI:Toggle()</code></td><td>–</td><td>Flips visibility.</td></tr>
+      <tr><td><code>UI:IsLoaded()</code></td><td>boolean</td><td>True once the loading screen has finished.</td></tr>
+      <tr><td><code>UI:WaitUntilLoaded(timeout?)</code></td><td>boolean</td><td>Yields until loading finishes (default timeout 30 seconds).</td></tr>
+      <tr><td><code>UI:SetMusic(bool)</code></td><td>–</td><td>Turns the music on or off and saves the choice.</td></tr>
+      <tr><td><code>UI:SetVolume(0–100)</code></td><td>–</td><td>Sets the normal volume and saves it.</td></tr>
+      <tr><td><code>UI:SetCrossfade(1–10)</code></td><td>–</td><td>Sets the loop crossfade length in seconds and saves it.</td></tr>
+      <tr><td><code>UI:Destroy()</code></td><td>–</td><td>Removes the UI, the music and every connection.</td></tr>
+    </table></div>
+    <p>Read the current settings from <code>UI.Settings</code>: <code>Music</code> (boolean), <code>Volume</code> (0–100) and <code>Crossfade</code> (seconds).</p>
+
+    <h3>Category and Tab</h3>
+    <div class="code">
+      <div class="bar"><span>Luau</span><button type="button" data-copy>Copy</button></div>
+<pre><span class="k">local</span> category = UI:<span class="f">CreateCategory</span>(<span class="s">"Player"</span>)   <span class="c">-- a circle on the rail</span>
+<span class="k">local</span> tab = category:<span class="f">CreateTab</span>(<span class="s">"Movement"</span>)        <span class="c">-- a page in the tab list</span></pre>
+    </div>
+
+    <h3>Components (called on a tab)</h3>
+    <div class="tablewrap"><table>
+      <tr><th>Component</th><th>Options</th><th>Returned object</th></tr>
+      <tr><td><code>tab:CreateSection(text)</code></td><td>text</td><td>–</td></tr>
+      <tr><td><code>tab:CreateLabel(text)</code></td><td>text</td><td><code>:Set(text)</code></td></tr>
+      <tr><td><code>tab:CreateButton(opts)</code></td><td><code>Name</code>, <code>Callback()</code></td><td>–</td></tr>
+      <tr><td><code>tab:CreateToggle(opts)</code></td><td><code>Name</code>, <code>Default</code>, <code>Callback(on)</code></td><td><code>:Set(bool, silent?)</code>, <code>:Get()</code></td></tr>
+      <tr><td><code>tab:CreateSlider(opts)</code></td><td><code>Name</code>, <code>Min</code>, <code>Max</code>, <code>Default</code>, <code>Increment</code>, <code>Callback(value)</code></td><td><code>:Set(value)</code>, <code>:Get()</code></td></tr>
+    </table></div>
+    <div class="note"><b>Tiles pair up.</b> Two toggles in a row sit side by side; so do two buttons. A lone tile stays full width until its partner is created. A slider, label or section always starts a new row.</div>
+    <div class="note"><b>Callbacks on creation.</b> A slider calls its callback once with its default value. A toggle calls its callback once only when <code>Default = true</code>. <code>:Set(value, true)</code> on a toggle changes it without calling the callback.</div>
+
+    <h3>Full example</h3>
+    <div class="code">
+      <div class="bar"><span>Luau</span><button type="button" data-copy>Copy</button></div>
+<pre><span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()
+<span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })
+
+<span class="k">local</span> player = UI:<span class="f">CreateCategory</span>(<span class="s">"Player"</span>)
+
+<span class="k">local</span> movement = player:<span class="f">CreateTab</span>(<span class="s">"Movement"</span>)
+movement:<span class="f">CreateSection</span>(<span class="s">"Speed"</span>)
+<span class="k">local</span> speed = movement:<span class="f">CreateToggle</span>({
+    Name = <span class="s">"Speed boost"</span>,
+    Callback = <span class="k">function</span>(on)
+        <span class="f">print</span>(<span class="s">"speed boost"</span>, on)
+    <span class="k">end</span>,
+})
+movement:<span class="f">CreateToggle</span>({ Name = <span class="s">"Infinite jump"</span> })      <span class="c">-- pairs with the toggle above</span>
+movement:<span class="f">CreateSlider</span>({
+    Name = <span class="s">"Walk speed"</span>, Min = 16, Max = 100, Default = 16, Increment = 1,
+    Callback = <span class="k">function</span>(v) <span class="f">print</span>(<span class="s">"walk speed"</span>, v) <span class="k">end</span>,
+})
+movement:<span class="f">CreateButton</span>({ Name = <span class="s">"Reset"</span>, Callback = <span class="k">function</span>() speed:<span class="f">Set</span>(<span class="k">false</span>) <span class="k">end</span> })
+
+UI:<span class="f">WaitUntilLoaded</span>()
+<span class="f">print</span>(<span class="s">"Hoodz is ready"</span>)</pre>
+    </div>
+  </section>
+
+  <section id="music">
+    <h2>Music and settings</h2>
+    <p>The song <code>substance.mp3</code> is built in and follows a fixed script:</p>
+    <ol class="steps">
+      <li><b>Loading:</b> it plays loud and sounds underwater (muffled highs, a slow wobble and a watery echo).</li>
+      <li><b>Transition:</b> when loading ends, the underwater effect and the loudness fade away over about 2.5 seconds.</li>
+      <li><b>Loop:</b> it plays low and clean. Near the end of the song a second copy fades in from the start while the first fades out, so the loop has no hard restart.</li>
+    </ol>
+    <p>The last category on the rail, <b>Hoodz</b>, is the built-in settings page:</p>
+    <div class="tablewrap"><table>
+      <tr><th>Setting</th><th>Range</th><th>Notes</th></tr>
+      <tr><td>Background music</td><td>on / off</td><td>When off, nothing is downloaded or played. The dock also has a quick switch.</td></tr>
+      <tr><td>Music volume</td><td>0 – 100</td><td>Normal volume after loading (default 30).</td></tr>
+      <tr><td>Loop crossfade</td><td>1 – 10 seconds</td><td>How long the end and the start of the song overlap.</td></tr>
+    </table></div>
+    <p>Settings are saved as <code>Hoodz_Settings.json</code> in the executor’s workspace folder, so they survive re-running the script.</p>
+  </section>
+
+  <section id="reload">
+    <h2>Reloading</h2>
+    <p>Running the script again is safe. When the library file is loaded a second time, the previous UI, its music and all of its connections are destroyed first, and the new code takes over. You can edit your script, run it again, and see the result without leaving the game.</p>
+    <div class="code">
+      <div class="bar"><span>Luau</span><button type="button" data-copy>Copy</button></div>
+<pre><span class="c">-- run this twice: you still end up with exactly one Hoodz window</span>
+<span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()
+<span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })</pre>
+    </div>
+    <p>Calling <code>Hoodz.new</code> twice from the same loaded library also replaces the first UI.</p>
+  </section>
+
+  <section id="test">
+    <h2>Run the test</h2>
+    <p>The test script builds a demo UI that uses every component, then checks itself: toggles, slider clamping and rounding, the built-in settings, and show and hide. The results appear in <b>Tests → Self-test</b> and in the console. The UI loads once. To also test reloading, set <code>RELOAD_TEST = true</code> at the top of the script: it then loads the library a second time on purpose, so the loading screen and the music play twice.</p>
+    <div class="code">
+      <div class="bar"><span>Luau</span><button type="button" data-copy>Copy</button></div>
+<pre><span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/test.lua"</span>))()</pre>
+    </div>
+    <p>Things to check by hand while it runs:</p>
+    <ul>
+      <li>The loading screen covers the whole screen, including the sides, and the song starts loud and underwater.</li>
+      <li>After loading, the panels rise in one after another and the song settles into a low loop.</li>
+      <li>In <b>Stress Test → Scrolling</b>, hold one slider and drag up and down: only that slider moves.</li>
+      <li>Tap the logo to hide and show the UI. Drag the header to move all panels.</li>
+    </ul>
+    <details>
+      <summary>Show the full test script</summary>
+      <div>
+        <div class="code">
+          <div class="bar"><span>test.lua</span><button type="button" data-copy>Copy</button></div>
+<pre>--[[
+	Hoodz test script (v1.3)
+
+	1. Loads the library from GitHub and builds a demo UI that exercises every component
+	   (tile pairing, sliders, categories, scrolling).
+	2. Runs a self-test (components, settings, show/hide) and shows every PASS / FAIL in
+	   Tests &gt; Self-test (also in the console).
+	3. OPTIONAL: set RELOAD_TEST = true to also load the library a second time and prove that
+	   reloading replaces the old UI. That makes the loading screen + music play twice,
+	   so it is OFF by default.
+
+	Sliders: grab one in "Stress Test &gt; Scrolling" and drag up/down -
+	only the slider you grabbed should move.
+]]
+
+local URL = "https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"
+
+local RELOAD_TEST = false -- true = also load the library a 2nd time (UI loads twice on purpose)
+
+local function loadLib()
+	return loadstring(game:HttpGet(URL))()
+end
+
+local ok, Hoodz = pcall(loadLib)
+if not ok or type(Hoodz) ~= "table" then
+	warn("[Hoodz test] failed to load the library:", Hoodz)
+	return
+end
+
+local results = {}
+local function check(name, cond)
+	table.insert(results, { name = name, ok = cond and true or false })
+	print("[Hoodz test] " .. (cond and "PASS" or "FAIL") .. "  " .. name)
+end
+
+----------------------------------------------------------------------
+-- Demo UI (nothing else is needed: logo + music are built in)
+----------------------------------------------------------------------
+local function build(lib, summary)
+	local UI = lib.new({
+		Title = "Hoodz",
+		LoadingTime = 2,
+		ToggleKey = Enum.KeyCode.RightShift,
+	})
+	local c = {}
+
+	-- Category 1: Components
+	local components = UI:CreateCategory("Components")
+
+	local togglesTab = components:CreateTab("Toggles")
+	local status = togglesTab:CreateLabel("Status: waiting...")
+	togglesTab:CreateSection("Tiles pair up two per row")
+	c.toggleA = togglesTab:CreateToggle({
+		Name = "Toggle A",
+		Default = false,
+		Callback = function(on)
+			status:Set("Toggle A = " .. tostring(on))
+		end,
+	})
+	togglesTab:CreateToggle({
+		Name = "Toggle B",
+		Default = true,
+		Callback = function(on)
+			status:Set("Toggle B = " .. tostring(on))
+		end,
+	})
+	togglesTab:CreateToggle({ Name = "Toggle C", Callback = print })
+	togglesTab:CreateToggle({ Name = "Toggle D", Callback = print })
+	togglesTab:CreateToggle({ Name = "A lone toggle stays full width", Callback = print })
+	togglesTab:CreateSection("Buttons")
+	togglesTab:CreateButton({
+		Name = "Flip Toggle A",
+		Callback = function()
+			c.toggleA:Set(not c.toggleA:Get())
+		end,
+	})
+	togglesTab:CreateButton({
+		Name = "Print hello",
+		Callback = function()
+			print("[Hoodz test] hello from a button")
+		end,
+	})
+
+	local slidersTab = components:CreateTab("Sliders")
+	local readout = slidersTab:CreateLabel("Slider value: 50")
+	slidersTab:CreateSection("Values")
+	c.sliderA = slidersTab:CreateSlider({
+		Name = "Whole numbers",
+		Min = 0,
+		Max = 100,
+		Default = 50,
+		Increment = 1,
+		Callback = function(v)
+			readout:Set("Slider value: " .. v)
+		end,
+	})
+	c.sliderB = slidersTab:CreateSlider({
+		Name = "Decimals (0.05 steps)",
+		Min = 0,
+		Max = 1,
+		Default = 0.5,
+		Increment = 0.05,
+	})
+	slidersTab:CreateSlider({ Name = "Big range (step 10)", Min = 0, Max = 500, Default = 100, Increment = 10 })
+
+	-- Category 2: Stress Test
+	local stress = UI:CreateCategory("Stress Test")
+	local scrollTab = stress:CreateTab("Scrolling")
+	for i = 1, 6 do
+		scrollTab:CreateSlider({ Name = "Value " .. i, Min = 0, Max = 10, Default = i })
+	end
+	for i = 1, 6 do
+		scrollTab:CreateToggle({ Name = "Option " .. i })
+	end
+
+	-- Category 3: Tests (self-test report)
+	local tests = UI:CreateCategory("Tests")
+	local report = tests:CreateTab("Self-test")
+	if summary then
+		local passed = 0
+		for _, r in ipairs(summary) do
+			if r.ok then
+				passed += 1
+			end
+		end
+		report:CreateSection(passed .. " / " .. #summary .. " passed")
+		for _, r in ipairs(summary) do
+			report:CreateLabel((r.ok and "PASS   " or "FAIL   ") .. r.name)
+		end
+	else
+		c.report = report
+		c.status = report:CreateLabel("Running self-test...")
+	end
+
+	return UI, c
+end
+
+----------------------------------------------------------------------
+-- Self-test
+----------------------------------------------------------------------
+local UI, c = build(Hoodz, nil)
+check("library exposes new()", type(Hoodz.new) == "function")
+check("UI finished loading", UI:WaitUntilLoaded(40))
+
+-- components
+c.toggleA:Set(true, true)
+check("toggle: Set(true) then Get() == true", c.toggleA:Get() == true)
+c.toggleA:Set(false, true)
+check("toggle: Set(false) then Get() == false", c.toggleA:Get() == false)
+c.sliderA:Set(150)
+check("slider: value above Max is clamped to 100", c.sliderA:Get() == 100)
+c.sliderA:Set(33.4)
+check("slider: Increment 1 rounds 33.4 to 33", c.sliderA:Get() == 33)
+c.sliderB:Set(0.37)
+check("slider: Increment 0.05 rounds 0.37 to 0.35", c.sliderB:Get() == 0.35)
+
+-- built-in settings
+local oldVol, oldMusic, oldXf = UI.Settings.Volume, UI.Settings.Music, UI.Settings.Crossfade
+UI:SetVolume(25)
+check("settings: SetVolume(25)", UI.Settings.Volume == 25)
+UI:SetCrossfade(6)
+check("settings: SetCrossfade(6)", UI.Settings.Crossfade == 6)
+UI:SetMusic(not oldMusic)
+check("settings: SetMusic toggles", UI.Settings.Music == (not oldMusic))
+UI:SetMusic(oldMusic)
+UI:SetVolume(oldVol)
+UI:SetCrossfade(oldXf)
+check("settings: values restored", UI.Settings.Music == oldMusic and UI.Settings.Volume == oldVol)
+check("built-in Settings tab exists", UI.SettingsTab ~= nil)
+
+-- show / hide
+UI:SetVisible(false)
+task.wait(0.4)
+check("SetVisible(false) hides the UI", UI.Main.Visible == false)
+UI:SetVisible(true)
+task.wait(0.4)
+check("SetVisible(true) shows the UI", UI.Main.Visible == true)
+
+local function countPassed()
+	local n = 0
+	for _, r in ipairs(results) do
+		if r.ok then
+			n += 1
+		end
+	end
+	return n
+end
+
+if RELOAD_TEST then
+	-- reload: loading the library a second time must replace the first UI
+	local first = UI
+	local lib2 = loadLib()
+	task.wait(0.3)
+	check("reload: loading the library again destroys the old UI", first.Gui.Parent == nil)
+	check("reload: a fresh library table is returned", lib2 ~= nil and lib2 ~= Hoodz)
+	-- rebuild with the new library and show the report
+	UI = build(lib2, results)
+else
+	-- single load: write the results into the existing UI
+	c.status:Set(countPassed() .. " / " .. #results .. " passed")
+	for _, r in ipairs(results) do
+		c.report:CreateLabel((r.ok and "PASS   " or "FAIL   ") .. r.name)
+	end
+end
+
+print(("[Hoodz test] done: %d / %d passed"):format(countPassed(), #results))
+</pre>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section id="help">
+    <h2>Help and hosting</h2>
+    <details>
+      <summary>The logo does not show</summary>
+      <div><p>The logo is downloaded from <code>IMG_3411.jpeg</code> in the repo root. Check the file name, or pass your own link with <code>ImageUrl = "&lt;raw link&gt;"</code>. Your executor also needs <code>getcustomasset</code>, <code>writefile</code> and <code>isfile</code>. Without a logo you get a red “H” button instead.</p></div>
+    </details>
+    <details>
+      <summary>There is no music</summary>
+      <div><p>Check that <code>substance.mp3</code> is in the repo root, that <b>Background music</b> is on in the Hoodz settings, and that your volume is above 0. The first run downloads the file, which can take a few seconds on the loading screen.</p></div>
+    </details>
+    <details>
+      <summary>The UI is too big or too small</summary>
+      <div><p>The panels scale to the screen automatically. If it still looks wrong, tell me your device and screen size and the scale limits can be adjusted.</p></div>
+    </details>
+    <details>
+      <summary>How do I put this page online?</summary>
+      <div><p>Save this file as <code>index.html</code> in the root of your repository, then open the repository’s <b>Settings → Pages</b> and publish the <code>main</code> branch. The page then lives at <code>https://animstation.github.io/HoodzGui/</code>.</p></div>
+    </details>
+    <details>
+      <summary>Can I change the colors?</summary>
+      <div><p>The colors live in the <code>Theme</code> table at the top of <code>HoodzLib.lua</code> (<code>Hoodz.Theme</code> after loading). Change them in the library file and every panel follows.</p></div>
+    </details>
+  </section>
+</main>
+
+<footer>
+  Hoodz UI Library v1.3 · open source · <a href="https://github.com/animstation/HoodzGui">github.com/animstation/HoodzGui</a>
+</footer>
+
+<script>
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = btn.closest('.code').querySelector('pre');
+      var text = pre.innerText;
+      var done = function () {
+        var old = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text); done(); });
+      } else {
+        fallback(text); done();
+      }
+    });
+  });
+  function fallback(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+</script>
+</body>
+</html>
