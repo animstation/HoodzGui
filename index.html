@@ -3,250 +3,312 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hoodz</title>
-<meta name="description" content="Hoodz: a red and black Luau UI module for Roblox. One loadstring line, floating panels, built-in music.">
+<title>Hoodz — a documentary on how to use it</title>
+<meta name="description" content="A step-by-step walkthrough of the Hoodz Luau UI module: every snippet, assembled in order, becomes a working script.">
 <meta name="color-scheme" content="dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --void:#060305; --panel:#140810; --panel-2:#1c0c14; --line:#3d1420;
-    --ember:#ff2d3a; --ember-2:#ff6b75; --deep:#700010;
-    --ink:#f2e4e6; --dim:#a0858c;
+    --bg:#0a0a0b; --panel:#141416; --panel2:#19191c; --line:#28282b;
+    --red:#ff3b49; --red-deep:#8a1420; --red-soft:#ff8088;
+    --ink:#ececee; --dim:#8d8d93;
+    --grotesk:"Space Grotesk", ui-sans-serif, sans-serif;
+    --serif:"Source Serif 4", Georgia, serif;
     --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-    --sans:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --r:12px;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth; scroll-padding-top:68px}
-  body{margin:0; background:var(--void); color:var(--ink); font:16px/1.7 var(--sans); -webkit-font-smoothing:antialiased; overflow-x:hidden}
-  a{color:var(--ember-2); text-decoration:none}
-  a:hover{text-decoration:underline}
-  a:focus-visible, button:focus-visible, summary:focus-visible{outline:2px solid var(--ember); outline-offset:3px}
-  code{font-family:var(--mono); background:rgba(255,45,58,.1); border:1px solid rgba(255,45,58,.22); padding:1px 6px; border-radius:6px; font-size:.86em; color:#ffd2cf}
-  button{font-family:inherit}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--bg); color:var(--ink); font:17px/1.75 var(--serif); -webkit-font-smoothing:antialiased}
+  a{color:var(--red-soft)} a:hover{text-decoration:none; opacity:.85}
+  a:focus-visible, button:focus-visible, summary:focus-visible{outline:2px solid var(--red); outline-offset:3px}
+  code{font-family:var(--mono); background:rgba(255,59,73,.1); border:1px solid rgba(255,59,73,.2); padding:1px 6px; border-radius:6px; font-size:.82em; color:#ffc9cc}
 
-  #rain{position:fixed; inset:0; z-index:-2; opacity:.3; pointer-events:none}
-  .scan{position:fixed; inset:0; z-index:-1; pointer-events:none;
-    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.025) 0 1px, transparent 1px 3px);
-    mix-blend-mode:overlay;
+  nav{position:sticky; top:0; z-index:40; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:14px clamp(16px,4vw,40px); background:rgba(10,10,11,.86); backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
+  nav .mark{font-family:var(--grotesk); font-weight:700; font-size:16px; letter-spacing:.2px}
+  nav .mark b{color:var(--red)}
+  nav .prog{height:2px; background:var(--line); flex:1; max-width:220px; border-radius:2px; overflow:hidden; display:none}
+  nav .prog i{display:block; height:100%; width:0%; background:var(--red); transition:width .15s linear}
+  @media (min-width:860px){ nav .prog{display:block} }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 clamp(16px,4vw,40px)}
+  .layout{display:grid; grid-template-columns:1fr; gap:0}
+  @media (min-width:980px){ .layout{grid-template-columns:minmax(0,660px) 1fr; gap:40px; align-items:start} }
+
+  /* --- title card --- */
+  .cold-open{padding:64px 0 10px; text-align:center}
+  .cold-open .kicker{font-family:var(--mono); font-size:12px; letter-spacing:2px; color:var(--dim); text-transform:uppercase}
+  .cold-open h1{font-family:var(--grotesk); font-weight:700; font-size:clamp(44px,8vw,78px); margin:14px 0 0; letter-spacing:-1px}
+  .cold-open h1 b{color:var(--red); font-weight:700}
+  .cold-open p{font-family:var(--serif); font-size:19px; color:var(--dim); max-width:46ch; margin:18px auto 0}
+  .reel{display:flex; gap:10px; justify-content:center; margin-top:22px; font-family:var(--mono); font-size:11px; color:var(--dim)}
+  .reel span{border:1px solid var(--line); padding:4px 10px; border-radius:99px}
+
+  /* --- 3D mockup, "the example gui" --- */
+  .rail3col{display:none}
+  @media (min-width:980px){
+    .rail3col{display:block; position:sticky; top:84px}
   }
-  .glitch{position:fixed; inset:0; z-index:40; pointer-events:none; opacity:0}
-  .glitch.active{animation:gl .15s steps(2,end)}
-  @keyframes gl{
-    0%{opacity:0}
-    30%{opacity:.5; clip-path:inset(28% 0 44% 0); transform:translateX(-5px); background:linear-gradient(90deg, rgba(255,45,58,.28), transparent 60%)}
-    60%{opacity:.4; clip-path:inset(58% 0 18% 0); transform:translateX(4px); background:linear-gradient(90deg, transparent, rgba(255,45,58,.25) 60%)}
-    100%{opacity:0}
-  }
+  .mockwrap{perspective:1200px; display:flex; justify-content:center; padding:28px 0}
+  .mock{width:280px; height:188px; position:relative; transform-style:preserve-3d; will-change:transform}
+  .mlayer{position:absolute; border-radius:12px}
+  .mbase{inset:0; background:linear-gradient(145deg,#1c0d11,#0d0709); border:1px solid var(--line); transform:translateZ(0)}
+  .mhead{left:0; right:0; top:0; height:30px; background:rgba(255,59,73,.14); border-bottom:1px solid var(--line); border-radius:12px 12px 0 0; transform:translateZ(16px); display:flex; align-items:center; gap:6px; padding:0 10px}
+  .mhead i{width:7px; height:7px; border-radius:50%; background:var(--red)}
+  .mrail{left:0; top:30px; bottom:0; width:42px; transform:translateZ(24px); display:flex; flex-direction:column; align-items:center; gap:8px; padding-top:12px}
+  .mdot{width:16px; height:16px; border-radius:50%; background:#241318; border:1px solid var(--line)}
+  .mdot.on{border-radius:5px; background:linear-gradient(135deg,var(--red),var(--red-deep))}
+  .mgrid{left:42px; right:0; top:30px; bottom:0; transform:translateZ(30px); display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:10px}
+  .mtile{background:#1b0f13; border:1px solid var(--line); border-radius:8px}
+  .mtile.on{background:linear-gradient(135deg,rgba(255,59,73,.75),rgba(138,20,32,.75))}
+  .mtile.wide{grid-column:1/-1}
+  .mock-cap{text-align:center; font-family:var(--mono); font-size:11px; color:var(--dim); margin-top:6px}
+  @media (prefers-reduced-motion: reduce){ .mock{transform:none !important} }
 
-  /* gate */
-  #gate{position:fixed; inset:0; z-index:100; background:var(--void); display:flex; align-items:center; justify-content:center; flex-direction:column; transition:opacity .6s ease, visibility .6s}
-  #gate.gone{opacity:0; visibility:hidden; pointer-events:none}
-  .boot{font-family:var(--mono); font-size:13px; color:var(--dim); text-align:left; width:280px; margin-bottom:26px}
-  .boot div{opacity:0; animation:bl .4s ease forwards; margin-bottom:5px}
-  .boot div:nth-child(1){animation-delay:.1s} .boot div:nth-child(2){animation-delay:.4s}
-  .boot div:nth-child(3){animation-delay:.7s} .boot div:nth-child(4){animation-delay:1s}
-  @keyframes bl{to{opacity:1}}
-  .boot b{color:var(--ember-2)}
-  #connect{
-    font-family:var(--mono); font-weight:700; font-size:15px; letter-spacing:1px;
-    color:var(--ink); background:linear-gradient(135deg, var(--ember), var(--deep));
-    border:1px solid var(--ember-2); padding:14px 30px; border-radius:9px; cursor:pointer;
-    opacity:0; animation:bl .4s ease forwards 1.3s; box-shadow:0 0 30px rgba(255,45,58,.25);
-  }
-  #connect:hover{filter:brightness(1.12)}
-  .hint{font-family:var(--mono); font-size:11px; color:var(--dim); margin-top:14px; opacity:0; animation:bl .4s ease forwards 1.5s; text-align:center; max-width:280px}
-  .granted{font-family:var(--mono); font-weight:800; font-size:clamp(26px,6vw,44px); color:var(--ember); letter-spacing:2px; opacity:0; position:fixed; z-index:90; top:50%; left:50%; transform:translate(-50%,-50%); text-shadow:0 0 40px rgba(255,45,58,.6); pointer-events:none}
-  .granted.show{animation:grant 1.1s ease forwards}
-  @keyframes grant{0%{opacity:0; transform:translate(-50%,-50%) scale(.85)} 18%{opacity:1; transform:translate(-50%,-50%) scale(1)} 75%{opacity:1} 100%{opacity:0}}
+  /* --- chapters --- */
+  main{padding-bottom:120px}
+  .chapter{margin-top:92px; opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s ease}
+  .chapter.in{opacity:1; transform:translateY(0)}
+  .chapter .ep{font-family:var(--mono); font-size:12px; color:var(--red); letter-spacing:1.5px; text-transform:uppercase}
+  .chapter h2{font-family:var(--grotesk); font-size:clamp(23px,3.2vw,30px); margin:6px 0 14px; font-weight:700}
+  .chapter p{color:#cfc9ca; max-width:62ch}
+  .chapter p + p{margin-top:10px}
 
-  nav{position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:4px; flex-wrap:wrap;
-    padding:12px clamp(16px,4vw,40px); background:rgba(6,3,5,.85); backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
-  nav .mark{font-family:var(--mono); font-weight:700; color:var(--ember); margin-right:14px; font-size:15px}
-  nav .mark::before{content:"> "; color:var(--dim)}
-  nav a.pl{color:var(--dim); font-family:var(--mono); font-size:13px; padding:6px 10px; border-radius:7px}
-  nav a.pl:hover{color:var(--ink); background:rgba(255,45,58,.1); text-decoration:none}
-
-  main{max-width:860px; margin:0 auto; padding:0 clamp(18px,4vw,28px) 100px}
-  section{margin-top:84px; scroll-margin-top:84px}
-  h2{font-family:var(--mono); font-size:clamp(21px,3.4vw,26px); font-weight:700; margin:0 0 6px}
-  h2 small{display:block; font-family:var(--sans); font-weight:400; font-size:14px; color:var(--dim); margin-top:6px}
-  h3{font-size:16px; font-weight:600; margin:30px 0 8px; color:var(--ember-2)}
-  p{margin:0 0 14px; color:#d8c6c9; max-width:74ch}
-  ul,ol{padding-left:20px; color:#d8c6c9}
-  li{margin-bottom:6px}
-
-  .hero{padding:70px 0 10px; text-align:center}
-  .hero h1{font-family:var(--mono); font-weight:800; font-size:clamp(50px,10vw,88px); margin:0; letter-spacing:-1px; text-shadow:0 0 30px rgba(255,45,58,.3)}
-  .hero p.lead{max-width:50ch; margin:18px auto 0; color:var(--dim); font-size:16px}
-  .stats{display:flex; gap:22px; justify-content:center; flex-wrap:wrap; margin-top:26px; font-family:var(--mono); font-size:12px; color:var(--dim)}
-  .stats b{display:block; color:var(--ink); font-size:18px; font-weight:700}
-
-  .term{background:#0d070b; border:1px solid var(--line); border-radius:var(--r); margin:16px 0 22px; overflow:hidden}
-  .term .bar{display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,45,58,.06); border-bottom:1px solid var(--line)}
-  .term .bar i{width:7px; height:7px; background:var(--ember); border-radius:2px; box-shadow:0 0 6px rgba(255,45,58,.8); flex:none}
+  .term{background:#0e0a0b; border:1px solid var(--line); border-radius:12px; margin:18px 0 8px; overflow:hidden}
+  .term .bar{display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,59,73,.05); border-bottom:1px solid var(--line)}
+  .term .bar i{width:7px; height:7px; background:var(--red); border-radius:2px}
   .term .bar span{font-family:var(--mono); font-size:11.5px; color:var(--dim); flex:1}
-  .term .bar button{cursor:pointer; font-family:var(--mono); font-size:11.5px; color:var(--ember-2); background:transparent; border:1px solid var(--line); padding:3px 10px; border-radius:7px; transition:background .15s}
-  .term .bar button:hover{background:rgba(255,45,58,.14)}
-  .term .bar button.done{background:var(--ember); color:#fff; border-color:var(--ember)}
-  pre{margin:0; padding:15px 17px; overflow-x:auto; font:13px/1.65 var(--mono); color:#f0dade; tab-size:4}
-  .c{color:#7c5c63} .k{color:#ff8a92} .s{color:#ffc79a} .f{color:#ffd7d2}
+  .term .bar button{cursor:pointer; font-family:var(--mono); font-size:11px; color:var(--red-soft); background:transparent; border:1px solid var(--line); padding:3px 10px; border-radius:7px}
+  .term .bar button:hover{background:rgba(255,59,73,.12)}
+  .term .bar button.done{background:var(--red); color:#fff; border-color:var(--red)}
+  pre{margin:0; padding:14px 16px; overflow-x:auto; font:13px/1.6 var(--mono); color:#f0dade; tab-size:4}
+  .c{color:#6e6468} .k{color:#ff8a92} .s{color:#ffc79a} .f{color:#ffd7d2}
+  .cap{font-family:var(--mono); font-size:11px; color:var(--dim); margin:0 0 20px}
+  .cap::before{content:"on screen: "}
 
-  .steps{list-style:none; padding:0; margin:18px 0}
-  .steps li{display:flex; gap:14px; padding:10px 0; border-bottom:1px dashed var(--line)}
-  .steps li:last-child{border-bottom:0}
-  .steps b{font-family:var(--mono); color:var(--ember); flex:none}
-  .steps div b.hl{color:var(--ink)}
+  .note{border-left:3px solid var(--red); background:rgba(255,59,73,.06); padding:11px 15px; border-radius:0 10px 10px 0; margin:16px 0; font-family:var(--serif); font-size:15.5px; color:#e6dadb}
 
-  .sch{border:1px solid var(--line); border-radius:16px; padding:16px; background:var(--panel); margin:20px 0}
-  .sgrid{display:grid; gap:8px; grid-template-columns:44px 100px 1fr; grid-template-rows:38px 1fr 30px; height:270px; max-width:640px; margin:0 auto}
-  .blk{border:1px solid var(--line); border-radius:9px; background:var(--panel-2); padding:7px 9px; font-family:var(--mono); font-size:10.5px; color:var(--dim)}
-  .blk b{color:var(--ember-2); font-weight:700; display:block; font-size:10.5px}
-  .blk.head{grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; font-size:11px}
-  .blk.rail{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px}
-  .blk.rail i{width:22px; height:22px; border-radius:50%; border:1px solid var(--line); background:#140a10; display:block}
-  .blk.rail i.on{border-radius:7px; background:linear-gradient(135deg,var(--ember),var(--deep)); border-color:var(--ember-2)}
-  .blk.tabs div.t{padding:4px 6px; border-radius:6px; margin-top:4px}
-  .blk.tabs div.t.on{background:linear-gradient(90deg,var(--ember),var(--deep)); color:#fff}
-  .blk.main{display:grid; grid-template-columns:1fr 1fr; gap:6px; align-content:start}
-  .blk.main div{border:1px solid var(--line); border-radius:7px; padding:6px; background:#140a10; min-height:30px}
-  .blk.main div.full{grid-column:1/-1}
-  .blk.dock{grid-column:1/-1; display:flex; align-items:center; justify-content:space-between}
-  .legend{margin-top:16px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px 20px; font-size:13.5px; color:var(--dim)}
-  .legend b{color:var(--ink); font-family:var(--mono); font-size:12.5px}
+  /* anatomy / reference tables */
+  .sch{border:1px solid var(--line); border-radius:16px; padding:16px; background:var(--panel); margin:18px 0}
+  .sgrid{display:grid; gap:8px; grid-template-columns:40px 92px 1fr; grid-template-rows:34px 1fr; height:220px; max-width:560px; margin:0 auto}
+  .blk{border:1px solid var(--line); border-radius:9px; background:var(--panel2); padding:7px 8px; font-family:var(--mono); font-size:10px; color:var(--dim)}
+  .blk b{color:var(--red-soft); display:block; font-size:10px}
+  .blk.head{grid-column:1/-1; display:flex; align-items:center; justify-content:space-between}
+  .blk.rail{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px}
+  .blk.rail i{width:18px; height:18px; border-radius:50%; background:#1b0f13; border:1px solid var(--line); display:block}
+  .blk.rail i.on{border-radius:6px; background:linear-gradient(135deg,var(--red),var(--red-deep))}
+  .blk.main{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+  .blk.main div{border:1px solid var(--line); border-radius:7px; padding:6px; background:#140a10; min-height:28px}
 
-  .tw{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); margin:14px 0 24px}
-  table{width:100%; border-collapse:collapse; font-size:14px; min-width:520px}
+  .tw{overflow-x:auto; border:1px solid var(--line); border-radius:12px; margin:14px 0 24px}
+  table{width:100%; border-collapse:collapse; font:14px/1.5 var(--serif); min-width:500px}
   th,td{text-align:left; padding:10px 13px; border-bottom:1px solid var(--line); vertical-align:top}
-  th{font-family:var(--mono); font-size:11px; color:var(--ember-2); background:rgba(255,45,58,.05)}
+  th{font-family:var(--mono); font-size:10.5px; color:var(--red-soft); background:rgba(255,59,73,.04); text-transform:uppercase; letter-spacing:.4px}
   td:first-child{white-space:nowrap; font-family:var(--mono); font-size:13px; color:var(--ink)}
   tr:last-child td{border-bottom:0}
 
-  .note{border-left:3px solid var(--ember); background:rgba(255,45,58,.07); padding:11px 15px; border-radius:0 10px 10px 0; margin:14px 0; font-size:14.5px; color:#e8d4d6}
-
-  .log{border:1px solid var(--line); border-radius:var(--r); overflow:hidden; margin:16px 0}
+  .log{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin:16px 0}
   .log details{border-bottom:1px solid var(--line)}
   .log details:last-child{border-bottom:0}
-  .log summary{cursor:pointer; list-style:none; padding:13px 16px; font-family:var(--mono); font-size:13.5px; color:var(--ink); display:flex; gap:10px}
+  .log summary{cursor:pointer; list-style:none; padding:13px 16px; font-family:var(--grotesk); font-weight:500; font-size:14.5px; display:flex; gap:10px}
   .log summary::-webkit-details-marker{display:none}
-  .log summary::before{content:"[?]"; color:var(--dim); flex:none}
-  .log details[open] summary::before{content:"[!]"; color:var(--ember)}
-  .log details > div{padding:0 16px 14px 44px; color:#c7b4b8; font-size:14.5px}
+  .log summary::before{content:"+"; color:var(--red); flex:none; width:14px}
+  .log details[open] summary::before{content:"–"}
+  .log details > div{padding:0 16px 14px 40px; color:#cfc9ca; font-size:15px}
 
-  footer{text-align:center; padding:46px 16px 90px; border-top:1px solid var(--line); color:var(--dim); font-family:var(--mono); font-size:12.5px}
+  /* final combined script */
+  .finale{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px clamp(16px,4vw,28px); margin-top:14px}
+  .finale h3{font-family:var(--grotesk); margin:0 0 4px}
+  .finale p{color:var(--dim); margin:0 0 14px; font-size:15px}
+
+  footer{text-align:center; padding:50px 16px 90px; border-top:1px solid var(--line); color:var(--dim); font-family:var(--mono); font-size:12px}
   footer a{color:var(--dim)}
 
-  #audioctl{position:fixed; right:16px; bottom:16px; z-index:50; display:flex; align-items:center; gap:9px;
-    background:rgba(20,8,16,.85); border:1px solid var(--line); border-radius:99px; padding:8px 14px 8px 10px; backdrop-filter:blur(8px)}
-  #audioctl button{background:none; border:none; color:var(--ink); cursor:pointer; font-size:15px; line-height:1; padding:2px}
-  #audioctl .bars{display:flex; align-items:flex-end; gap:2px; height:14px}
-  #audioctl .bars i{width:3px; background:var(--ember); border-radius:1px; height:3px; transition:height .08s linear}
-  #audioctl span{font-family:var(--mono); font-size:10px; color:var(--dim)}
-
   @media (max-width:640px){
-    .sgrid{grid-template-columns:34px 78px 1fr; height:250px}
-    .blk{font-size:9.5px}
-    .stats{gap:16px}
-  }
-  @media (prefers-reduced-motion: reduce){
-    .boot div, #connect, .hint, .granted.show, .glitch.active{animation:none !important; opacity:1 !important}
-    #rain{display:none}
+    .sgrid{grid-template-columns:32px 72px 1fr; height:200px}
+    .blk{font-size:9px}
   }
 </style>
 </head>
 <body>
-<canvas id="rain"></canvas>
-<div class="scan" aria-hidden="true"></div>
-<div class="glitch" id="glitch" aria-hidden="true"></div>
-<div class="granted" id="granted" aria-hidden="true">ACCESS GRANTED</div>
-
-<div id="gate">
-  <div class="boot">
-    <div>&gt; locating module <b>hoodz.lib</b></div>
-    <div>&gt; signal found — <b>animstation/HoodzGui</b></div>
-    <div>&gt; audio: substance.mp3, gta.mp3 preloading…</div>
-    <div>&gt; waiting for input</div>
-  </div>
-  <button id="connect" type="button">[ connect ]</button>
-  <div class="hint">starts the loop + click sounds — tap the speaker in the corner any time to mute</div>
-</div>
-
 <nav>
-  <span class="mark">hoodz</span>
-  <a class="pl" href="#start">use it</a>
-  <a class="pl" href="#anatomy">anatomy</a>
-  <a class="pl" href="#api">api</a>
-  <a class="pl" href="#components">components</a>
-  <a class="pl" href="#music">music</a>
-  <a class="pl" href="#reload">reload</a>
-  <a class="pl" href="#clicksfx">click sfx build</a>
-  <a class="pl" href="#log">log</a>
+  <span class="mark">hoodz<b>.</b></span>
+  <span class="prog"><i id="progbar"></i></span>
+  <a href="#finale" style="font-family:var(--mono); font-size:12px">the full script →</a>
 </nav>
 
-<main>
-  <header class="hero">
-    <h1>HOODZ</h1>
-    <p class="lead">A UI module for Roblox. Red and black, built from floating panels instead of one window, with its own music and its own settings.</p>
-    <div class="stats">
-      <div><b>5</b>components</div>
-      <div><b>10</b>UI methods</div>
-      <div><b>~54kb</b>module size</div>
-      <div><b>1</b>line to load</div>
-    </div>
-  </header>
+<header class="cold-open">
+  <div class="kicker">a documentary in ten parts</div>
+  <h1>How to use<br><b>Hoodz</b></h1>
+  <p>Ten short parts. Each one adds one piece of code. Follow them in order and you end up with a complete, working script — shown in full at the end.</p>
+  <div class="reel"><span>v1.3</span><span>10 parts</span><span>1 script</span></div>
+</header>
 
-  <section id="start">
-    <h2>Use it<small>one line, then your first tab</small></h2>
-    <p>Hoodz is a single module. The logo and the music are already part of it — nothing to host or configure yourself.</p>
-    <ol class="steps">
-      <li><b>[1]</b><div><b class="hl">Load it.</b> One <code>loadstring</code> call returns the module.</div></li>
-      <li><b>[2]</b><div><b class="hl">Build the window.</b> <code>Hoodz.new({ Title = "Hoodz" })</code> starts the loading sequence and hands back the UI.</div></li>
-      <li><b>[3]</b><div><b class="hl">Add a category, a tab, a component.</b> Categories are the circles on the rail; tabs live inside a category.</div></li>
-    </ol>
-    <div class="term">
-      <div class="bar"><i></i><span>quick-start.lua</span><button type="button" data-copy>copy</button></div>
+<div class="wrap">
+<div class="layout">
+
+<main>
+
+  <section class="chapter" id="p1" data-ep="part one">
+    <div class="ep">Part One — The module</div>
+    <h2>Loading it</h2>
+    <p>Everything starts with one line. It downloads the module and hands back a table — call it <code>Hoodz</code>. Nothing is built yet; this just gets the tool into your hands.</p>
+    <div class="term"><div class="bar"><i></i><span>step_01.lua</span><button type="button" data-copy>copy</button></div>
+<pre><span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()</pre></div>
+    <p class="cap">one line, no window yet</p>
+  </section>
+
+  <section class="chapter" id="p2" data-ep="part two">
+    <div class="ep">Part Two — The window</div>
+    <h2>Building it</h2>
+    <p><code>Hoodz.new</code> is where the window actually appears. It starts the loading sequence, downloads the logo in the background, and hands back the UI you'll build everything else on top of.</p>
+    <div class="term"><div class="bar"><i></i><span>step_02.lua</span><button type="button" data-copy>copy</button></div>
+<pre><span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })</pre></div>
+    <p class="cap">a window exists, empty</p>
+    <div class="note">Tap the logo top-left, or press <code>RightShift</code>, any time — even mid-load — to show or hide it.</div>
+  </section>
+
+  <section class="chapter" id="p3" data-ep="part three">
+    <div class="ep">Part Three — Categories &amp; tabs</div>
+    <h2>Giving it structure</h2>
+    <p>A <b>category</b> is a circle on the rail. A <b>tab</b> lives inside a category. This is the skeleton everything else hangs on.</p>
+    <div class="term"><div class="bar"><i></i><span>step_03.lua</span><button type="button" data-copy>copy</button></div>
+<pre><span class="k">local</span> tab = UI:<span class="f">CreateCategory</span>(<span class="s">"Player"</span>):<span class="f">CreateTab</span>(<span class="s">"Movement"</span>)</pre></div>
+    <p class="cap">one circle, one tab, still empty</p>
+  </section>
+
+  <section class="chapter" id="p4" data-ep="part four">
+    <div class="ep">Part Four — The first switch</div>
+    <h2>Adding a toggle</h2>
+    <p>Toggles pair up two per row on their own — add a second one later and they'll sit side by side. Each one takes a name, a starting state, and a callback that fires on every flip.</p>
+    <div class="term"><div class="bar"><i></i><span>step_04.lua</span><button type="button" data-copy>copy</button></div>
+<pre>tab:<span class="f">CreateToggle</span>({
+    Name = <span class="s">"Speed boost"</span>,
+    Default = <span class="k">false</span>,
+    Callback = <span class="k">function</span>(on) <span class="f">print</span>(<span class="s">"speed boost:"</span>, on) <span class="k">end</span>,
+})</pre></div>
+    <p class="cap">your first interactive control</p>
+  </section>
+
+  <section class="chapter" id="p5" data-ep="part five">
+    <div class="ep">Part Five — A number you can drag</div>
+    <h2>Adding a slider</h2>
+    <p>Sliders are full width. Each drag has a single owner, so grabbing one never scrolls the page or drags a neighbor — it fires once immediately with its default value, then again every time it moves.</p>
+    <div class="term"><div class="bar"><i></i><span>step_05.lua</span><button type="button" data-copy>copy</button></div>
+<pre><span class="k">local</span> speed = tab:<span class="f">CreateSlider</span>({
+    Name = <span class="s">"Walk speed"</span>, Min = 16, Max = 100, Default = 16, Increment = 1,
+    Callback = <span class="k">function</span>(v) <span class="f">print</span>(<span class="s">"walk speed:"</span>, v) <span class="k">end</span>,
+})</pre></div>
+    <p class="cap">a value, live</p>
+  </section>
+
+  <section class="chapter" id="p6" data-ep="part six">
+    <div class="ep">Part Six — Doing something on command</div>
+    <h2>Adding a button</h2>
+    <p>No state, no default — just a name and a callback. Here it uses the slider from the part before to reset itself, which is the first time two pieces of this script talk to each other.</p>
+    <div class="term"><div class="bar"><i></i><span>step_06.lua</span><button type="button" data-copy>copy</button></div>
+<pre>tab:<span class="f">CreateButton</span>({
+    Name = <span class="s">"Reset speed"</span>,
+    Callback = <span class="k">function</span>() speed:<span class="f">Set</span>(16) <span class="k">end</span>,
+})</pre></div>
+    <p class="cap">a button, wired to the slider above it</p>
+  </section>
+
+  <section class="chapter" id="p7" data-ep="part seven">
+    <div class="ep">Part Seven — Keeping it readable</div>
+    <h2>Sections &amp; labels</h2>
+    <p>A section is a small heading, nothing more. A label is text you can update later — useful for showing status back to whoever's using the panel.</p>
+    <div class="term"><div class="bar"><i></i><span>step_07.lua</span><button type="button" data-copy>copy</button></div>
+<pre>tab:<span class="f">CreateSection</span>(<span class="s">"Movement"</span>)
+<span class="k">local</span> status = tab:<span class="f">CreateLabel</span>(<span class="s">"Status: idle"</span>)
+status:<span class="f">Set</span>(<span class="s">"Status: running"</span>)</pre></div>
+    <p class="cap">the tab, organized</p>
+  </section>
+
+  <section class="chapter" id="p8" data-ep="part eight">
+    <div class="ep">Part Eight — What came for free</div>
+    <h2>The music, already running</h2>
+    <p>Nothing above touched sound, yet the window already has it: loud and underwater while it loaded, now settled into a low loop that fades into itself at the seam instead of restarting hard. It downloaded and cached the same way the logo did — automatically.</p>
+    <p>The last circle on the rail, <b>Hoodz</b>, holds the built-in settings — music on/off, a volume slider, a loop-crossfade slider. All three are saved and come back exactly as you left them.</p>
+    <div class="note">None of this needed a line of your code. It's part of what <code>Hoodz.new</code> already built.</div>
+  </section>
+
+  <section class="chapter" id="p9" data-ep="part nine">
+    <div class="ep">Part Nine — A different look</div>
+    <h2>Themes</h2>
+    <p>Same settings page has a second tab, <b>Themes</b>: four buttons — Hoodz, Black &amp; Grey, Blue, White — each one recoloring every outline, highlight, toggle, and slider live, no rebuild. Whichever one is picked is remembered for that Roblox username and restored automatically next time.</p>
+    <p>Below the four buttons sits a plain text box. It does nothing for almost anyone who types in it. For the one person who knows what to type, it unlocks a fifth theme — flat, grey, deliberately static — that never appears as a button and was never meant to.</p>
+    <div class="term"><div class="bar"><i></i><span>step_09.lua</span><button type="button" data-copy>copy</button></div>
+<pre><span class="k">local</span> settings = UI:<span class="f">CreateCategory</span>(<span class="s">"Hoodz"</span>) <span class="c">-- already there - you don't build this one</span>
+UI:<span class="f">SetTheme</span>(<span class="s">"Blue"</span>)        <span class="c">-- or do it from code instead of the button</span></pre></div>
+    <p class="cap">one script, five possible looks</p>
+  </section>
+
+  <section class="chapter" id="p10" data-ep="part ten">
+    <div class="ep">Part Ten — Starting over</div>
+    <h2>Reloading</h2>
+    <p>Run the same script twice. The module notices, tears down the first window and its music completely, and builds the second one clean. Edit your script, run it again, never leave the game.</p>
+    <div class="term"><div class="bar"><i></i><span>step_10.lua</span><button type="button" data-copy>copy</button></div>
+<pre><span class="c">-- run this twice in a row: you still end up with exactly one window</span>
+<span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()
+<span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })</pre></div>
+  </section>
+
+  <section class="chapter" id="finale">
+    <div class="ep">The Full Picture</div>
+    <h2>Every part, in order</h2>
+    <p>This is parts one through seven, combined — nothing added. Paste it as one script and it runs.</p>
+    <div class="finale">
+      <h3>combined.lua</h3>
+      <p>Parts Eight through Ten need nothing pasted in — the music, the themes, and reloading are already part of what <code>Hoodz.new</code> builds.</p>
+      <div class="term"><div class="bar"><i></i><span>combined.lua</span><button type="button" data-copy>copy</button></div>
 <pre><span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()
 <span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })
 
 <span class="k">local</span> tab = UI:<span class="f">CreateCategory</span>(<span class="s">"Player"</span>):<span class="f">CreateTab</span>(<span class="s">"Movement"</span>)
-tab:<span class="f">CreateToggle</span>({ Name = <span class="s">"Speed boost"</span>, Callback = <span class="k">function</span>(on) <span class="f">print</span>(on) <span class="k">end</span> })
-tab:<span class="f">CreateSlider</span>({ Name = <span class="s">"Walk speed"</span>, Min = 16, Max = 100, Default = 16, Callback = <span class="k">function</span>(v) <span class="f">print</span>(v) <span class="k">end</span> })</pre>
+tab:<span class="f">CreateSection</span>(<span class="s">"Movement"</span>)
+<span class="k">local</span> status = tab:<span class="f">CreateLabel</span>(<span class="s">"Status: idle"</span>)
+
+tab:<span class="f">CreateToggle</span>({
+    Name = <span class="s">"Speed boost"</span>,
+    Default = <span class="k">false</span>,
+    Callback = <span class="k">function</span>(on) status:<span class="f">Set</span>(<span class="s">"Status: "</span> .. (on <span class="k">and</span> <span class="s">"running"</span> <span class="k">or</span> <span class="s">"idle"</span>)) <span class="k">end</span>,
+})
+
+<span class="k">local</span> speed = tab:<span class="f">CreateSlider</span>({
+    Name = <span class="s">"Walk speed"</span>, Min = 16, Max = 100, Default = 16, Increment = 1,
+    Callback = <span class="k">function</span>(v) <span class="f">print</span>(<span class="s">"walk speed:"</span>, v) <span class="k">end</span>,
+})
+
+tab:<span class="f">CreateButton</span>({
+    Name = <span class="s">"Reset speed"</span>,
+    Callback = <span class="k">function</span>() speed:<span class="f">Set</span>(16) <span class="k">end</span>,
+})</pre></div>
     </div>
-    <div class="note">Tap the logo in the top-left corner, or press <code>RightShift</code>, to show or hide the UI — including mid-load.</div>
   </section>
 
-  <section id="anatomy">
-    <h2>How it's built<small>five panels, one shared background</small></h2>
-    <p>Hoodz isn't one window with a sidebar bolted on. It's separate rounded panels — <b>islands</b> — that share one pixel-gradient background and move together. Dragging the header drags all of them.</p>
-    <div class="sch" role="img" aria-label="Diagram: a header across the top, a category rail and tab list on the left, a tile grid in the center, a dock across the bottom">
+  <section class="chapter">
+    <div class="ep">Appendix — Anatomy</div>
+    <h2>What's actually on screen</h2>
+    <p>Separate rounded panels — islands — sharing one animated background, not one window with a sidebar bolted on. Dragging the header moves all of them together.</p>
+    <div class="sch" role="img" aria-label="Diagram: a header bar on top, a category rail and tab list on the left, a tile grid on the right">
       <div class="sgrid">
-        <div class="blk head"><span>Hoodz · v1.3</span><span>Player / Movement</span><span>×</span></div>
+        <div class="blk head"><span>Hoodz · v1.3</span><span>×</span></div>
         <div class="blk rail"><i class="on"></i><i></i><i></i></div>
-        <div class="blk tabs"><b>PLAYER</b><div class="t on">Movement</div><div class="t">Visuals</div></div>
         <div class="blk main">
-          <div><b>Speed boost</b>ON</div>
-          <div>Highlights<br>OFF</div>
-          <div class="full"><b>Walk speed</b></div>
+          <div><b>Speed boost</b>on</div>
+          <div>Highlights<br>off</div>
         </div>
-        <div class="blk dock"><span>● music on</span><span>RightShift or logo = hide</span></div>
       </div>
     </div>
-    <div class="legend">
-      <div><b>header</b> — title, breadcrumb, close. Drag to move everything.</div>
-      <div><b>rail</b> — one circle per category; the active one becomes a rounded square.</div>
-      <div><b>tabs</b> — the tabs that belong to the selected category.</div>
-      <div><b>tile grid</b> — toggles and buttons pair up two per row; sliders stay full width.</div>
-      <div><b>dock</b> — a quick music switch and a hint line.</div>
-      <div><b>logo</b> — the image top-left. It's the show/hide control, not just decoration.</div>
-    </div>
   </section>
 
-  <section id="api">
-    <h2>Reference<small>everything Hoodz.new() and the UI expose</small></h2>
-    <h3>Hoodz.new(config)</h3>
-    <p>Every field is optional.</p>
+  <section class="chapter">
+    <div class="ep">Appendix — Reference</div>
+    <h2>Every option, every method</h2>
+    <h3 style="font-family:var(--grotesk); font-size:16px; margin:26px 0 8px; color:var(--red-soft)">Hoodz.new(config)</h3>
     <div class="tw"><table>
       <tr><th>field</th><th>default</th><th>what it does</th></tr>
       <tr><td>Title</td><td>"Hoodz"</td><td>Shown in the header and on the loading screen.</td></tr>
@@ -256,9 +318,10 @@ tab:<span class="f">CreateSlider</span>({ Name = <span class="s">"Walk speed"</s
       <tr><td>Music</td><td>true</td><td>Starting state of the music switch. A saved setting overrides this later.</td></tr>
       <tr><td>MusicVolume</td><td>30</td><td>Normal volume after loading, 0–100.</td></tr>
       <tr><td>CrossfadeTime</td><td>4</td><td>Seconds the loop overlaps itself, 1–10.</td></tr>
+      <tr><td>Theme</td><td>"Hoodz"</td><td>Starting theme, used only if nothing is saved yet for this username.</td></tr>
       <tr><td>Name</td><td>"Hoodz"</td><td>Name of the ScreenGui. Keep the default so reloading can find the old one.</td></tr>
     </table></div>
-    <h3>UI methods</h3>
+    <h3 style="font-family:var(--grotesk); font-size:16px; margin:26px 0 8px; color:var(--red-soft)">UI methods</h3>
     <div class="tw"><table>
       <tr><th>call</th><th>returns</th><th>what it does</th></tr>
       <tr><td>UI:CreateCategory(name)</td><td>Category</td><td>Adds a circle to the rail.</td></tr>
@@ -270,294 +333,146 @@ tab:<span class="f">CreateSlider</span>({ Name = <span class="s">"Walk speed"</s
       <tr><td>UI:SetMusic(bool)</td><td>—</td><td>Turns the song on or off and saves the choice.</td></tr>
       <tr><td>UI:SetVolume(0–100)</td><td>—</td><td>Sets and saves the normal volume.</td></tr>
       <tr><td>UI:SetCrossfade(1–10)</td><td>—</td><td>Sets and saves the loop's overlap length.</td></tr>
+      <tr><td>UI:SetTheme(name)</td><td>boolean</td><td>Switches theme by name and saves it. False if the name doesn't exist.</td></tr>
       <tr><td>UI:Destroy()</td><td>—</td><td>Removes the UI, the music, and every connection.</td></tr>
     </table></div>
-    <p><code>UI.Settings</code> holds the current values: <code>Music</code>, <code>Volume</code>, <code>Crossfade</code>.</p>
+    <p style="font-size:15px; color:var(--dim)"><code>UI.Settings</code> holds <code>Music</code>, <code>Volume</code>, <code>Crossfade</code>. The active theme is separate: <code>UI.ThemeName</code> and <code>UI.ActiveTheme</code>.</p>
+    <h3 style="font-family:var(--grotesk); font-size:16px; margin:26px 0 8px; color:var(--red-soft)">Components</h3>
+    <div class="tw"><table>
+      <tr><th>on a tab</th><th>options</th><th>returns</th></tr>
+      <tr><td>CreateSection(text)</td><td>text</td><td>—</td></tr>
+      <tr><td>CreateLabel(text)</td><td>text</td><td>:Set(text)</td></tr>
+      <tr><td>CreateButton(opts)</td><td>Name, Callback()</td><td>—</td></tr>
+      <tr><td>CreateToggle(opts)</td><td>Name, Default, Callback(on)</td><td>:Set(bool, silent?), :Get()</td></tr>
+      <tr><td>CreateSlider(opts)</td><td>Name, Min, Max, Default, Increment, Callback(v)</td><td>:Set(v), :Get()</td></tr>
+      <tr><td>CreateInput(opts)</td><td>Name, Placeholder, Callback(text, enterPressed)</td><td>:Set(text), :Get()</td></tr>
+    </table></div>
+    <p style="font-size:15px; color:var(--dim)">Toggles fire their callback once on creation only if <code>Default = true</code>; sliders always fire once with their default. Both accept <code>NoInit = true</code> to skip that.</p>
   </section>
 
-  <section id="components">
-    <h2>Components<small>everything you can put on a tab</small></h2>
-    <h3>Section &amp; label</h3>
-    <div class="term"><div class="bar"><i></i><span>components.lua</span><button type="button" data-copy>copy</button></div>
-<pre>tab:<span class="f">CreateSection</span>(<span class="s">"Movement"</span>)
-<span class="k">local</span> status = tab:<span class="f">CreateLabel</span>(<span class="s">"Status: idle"</span>)
-status:<span class="f">Set</span>(<span class="s">"Status: running"</span>)</pre></div>
-
-    <h3>Toggle</h3>
-    <p>Pairs up two per row. A lone toggle stays full width until its partner is created.</p>
-    <div class="term"><div class="bar"><i></i><span>toggle.lua</span><button type="button" data-copy>copy</button></div>
-<pre><span class="k">local</span> fly = tab:<span class="f">CreateToggle</span>({
-    Name = <span class="s">"Fly"</span>, Default = <span class="k">false</span>,
-    Callback = <span class="k">function</span>(on) <span class="f">print</span>(<span class="s">"fly:"</span>, on) <span class="k">end</span>,
-})
-fly:<span class="f">Set</span>(<span class="k">true</span>)          <span class="c">-- fires the callback</span>
-fly:<span class="f">Set</span>(<span class="k">true</span>, <span class="k">true</span>)    <span class="c">-- silent</span></pre></div>
-    <p>Fires once on creation only if <code>Default = true</code>. Pass <code>NoInit = true</code> to skip that.</p>
-
-    <h3>Slider</h3>
-    <p>Full width. Each drag has a single owner, so grabbing one never scrolls the page or drags a neighbor.</p>
-    <div class="term"><div class="bar"><i></i><span>slider.lua</span><button type="button" data-copy>copy</button></div>
-<pre><span class="k">local</span> speed = tab:<span class="f">CreateSlider</span>({
-    Name = <span class="s">"Walk speed"</span>, Min = 16, Max = 100, Default = 16, Increment = 1,
-    Callback = <span class="k">function</span>(v) <span class="f">print</span>(<span class="s">"speed:"</span>, v) <span class="k">end</span>,
-})
-speed:<span class="f">Set</span>(50); speed:<span class="f">Get</span>()</pre></div>
-    <p>Fires once on creation by default, with the default value. Same <code>NoInit = true</code> escape hatch.</p>
-
-    <h3>Button</h3>
-    <div class="term"><div class="bar"><i></i><span>button.lua</span><button type="button" data-copy>copy</button></div>
-<pre>tab:<span class="f">CreateButton</span>({ Name = <span class="s">"Reset"</span>, Callback = <span class="k">function</span>() speed:<span class="f">Set</span>(16) <span class="k">end</span> })</pre></div>
-  </section>
-
-  <section id="music">
-    <h2>Music &amp; settings<small>built in, nothing to wire up</small></h2>
-    <p>The soundtrack follows a fixed script with no setup required:</p>
-    <ol class="steps">
-      <li><b>[1]</b><div><b class="hl">Loading.</b> Loud, underwater — muffled highs, a slow wobble, a watery echo.</div></li>
-      <li><b>[2]</b><div><b class="hl">Settling.</b> The effect and the loudness fade out over about 2.5 seconds once loading ends.</div></li>
-      <li><b>[3]</b><div><b class="hl">Looping.</b> Low and clean. Near the end of the track a second copy fades in from the start while the first fades out — never a hard restart.</div></li>
-    </ol>
-    <p>The last circle on the rail, <b>Hoodz</b>, is the built-in settings page — music on/off, a volume slider, a loop-crossfade slider, all saved and restored next run. The dock also has a quick on/off switch.</p>
-    <div class="note">This page runs the same idea: the loop you're hearing now (if you connected) is the underwater version, continuously — the module's loading-screen sound, stretched out.</div>
-  </section>
-
-  <section id="reload">
-    <h2>Reloading<small>run it twice, get one window</small></h2>
-    <p>Loading the module a second time — or calling <code>Hoodz.new</code> twice — destroys the previous UI, its music, and every connection before building the new one.</p>
-    <div class="term"><div class="bar"><i></i><span>reload.lua</span><button type="button" data-copy>copy</button></div>
-<pre><span class="c">-- run this twice: you still end up with exactly one window</span>
-<span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.lua"</span>))()
-<span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })</pre></div>
-  </section>
-
-  <section id="clicksfx">
-    <h2>Click SFX build<small>every click plays gta.mp3</small></h2>
-    <p>A second build, same API, nothing stripped out — except every interactive element plays <code>gta.mp3</code> the instant you click it. The logo, the close button, a category, a tab, a toggle, a button, grabbing a slider — all of it. The sound is downloaded and preloaded into a small pool during the loading screen, so the very first click has no delay.</p>
-    <div class="term"><div class="bar"><i></i><span>clicksfx.lua</span><button type="button" data-copy>copy</button></div>
-<pre><span class="k">local</span> Hoodz = <span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/HoodzLib.ClickSFX.lua"</span>))()
-<span class="k">local</span> UI = Hoodz.<span class="f">new</span>({ Title = <span class="s">"Hoodz"</span> })</pre></div>
-    <p>Want a different click sound? Override it the same way the logo and music are overridden:</p>
-    <div class="term"><div class="bar"><i></i><span>custom-click.lua</span><button type="button" data-copy>copy</button></div>
-<pre>Hoodz.<span class="f">new</span>({
-    ClickFile = <span class="s">"myclick.mp3"</span>,
-    ClickUrl = <span class="s">"https://raw.githubusercontent.com/you/repo/refs/heads/main/myclick.mp3"</span>,
-})</pre></div>
-    <p>This page borrows the same idea — every link, button, and copy button you've clicked so far played <code>gta.mp3</code> too, if you connected audio.</p>
-  </section>
-
-  <section id="test">
-    <h2>Testing<small>before you hand it to anyone</small></h2>
-    <p>Each build has a matching test script that exercises every component and prints a PASS/FAIL report into a <b>Tests</b> tab.</p>
+  <section class="chapter" id="test">
+    <div class="ep">Appendix — Testing</div>
+    <h2>Before you ship it</h2>
+    <p><code>test.lua</code> builds a demo covering every component — including switching through all four themes and the hidden one — and prints a PASS/FAIL report into a <b>Tests</b> tab and the console.</p>
     <div class="term"><div class="bar"><i></i><span>run-tests.lua</span><button type="button" data-copy>copy</button></div>
-<pre><span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/test.lua"</span>))()
-<span class="c">-- or, for the click-sound build:</span>
-<span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/test.clicksfx.lua"</span>))()</pre></div>
+<pre><span class="f">loadstring</span>(game:<span class="f">HttpGet</span>(<span class="s">"https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/test.lua"</span>))()</pre></div>
   </section>
 
-  <section id="log">
-    <h2>Log<small>common issues</small></h2>
+  <section class="chapter">
+    <div class="ep">Appendix — Log</div>
+    <h2>Common issues</h2>
     <div class="log">
-      <details><summary>The logo doesn't show</summary><div>It downloads in the background the first time the module loads. If it still doesn't appear after a few seconds, a plain "H" button is used instead — the UI still works either way.</div></details>
-      <details><summary>There's no music in-game</summary><div>Check that <b>Background music</b> is on in the Hoodz settings tab and that the volume slider is above 0. The first run has to download the track, which can add a few seconds to the loading screen.</div></details>
-      <details><summary>I don't hear anything on this page</summary><div>Click <b>[ connect ]</b> on the gate screen first — browsers block audio from starting on its own. After that, check the speaker icon in the bottom-right corner isn't muted.</div></details>
-      <details><summary>Clicks on this page are silent</summary><div><code>gta.mp3</code> is still decoding. It's usually ready within a second or two of connecting — try again after a moment.</div></details>
-      <details><summary>The UI is the wrong size in-game</summary><div>Every panel scales to the screen automatically. If it still looks off on a specific device, note the device and screen size.</div></details>
+      <details><summary>The logo doesn't show</summary><div>It downloads in the background on first load. If it still doesn't appear, a plain "H" swatch is used instead, colored to match the current theme — the UI still works.</div></details>
+      <details><summary>No music</summary><div>Check <b>Background music</b> is on in the Hoodz settings tab and the volume slider is above 0. The first run has to download the track, which can add a few seconds to loading.</div></details>
+      <details><summary>A theme didn't apply everywhere</summary><div>The background, outlines, highlights, toggles, and sliders all recolor live. The base dark panels and body text stay the same across every theme by design — themes change the accent and the background, not the whole UI into a literal light mode.</div></details>
+      <details><summary>The hidden theme</summary><div>It's unlocked by typing a specific code into the box under Themes → Code. What that code is isn't published here — ask whoever set it up for you.</div></details>
+      <details><summary>The UI is the wrong size</summary><div>Every panel scales to the screen automatically. If it still looks off on a specific device, note the device and screen size.</div></details>
     </div>
   </section>
+
 </main>
+
+<aside class="rail3col">
+  <div class="mockwrap">
+    <div class="mock" id="mock">
+      <div class="mlayer mbase"></div>
+      <div class="mlayer mhead"><i></i><i></i><i></i></div>
+      <div class="mlayer mrail"><div class="mdot on"></div><div class="mdot"></div><div class="mdot"></div></div>
+      <div class="mlayer mgrid">
+        <div class="mtile on"></div>
+        <div class="mtile"></div>
+        <div class="mtile wide"></div>
+      </div>
+    </div>
+  </div>
+  <div class="mock-cap">the example gui</div>
+</aside>
+
+</div>
+</div>
 
 <footer>
   Hoodz v1.3<br>
   <a href="https://github.com/animstation/HoodzGui">github.com/animstation/HoodzGui</a>
 </footer>
 
-<div id="audioctl">
-  <div class="bars" id="bars"><i></i><i></i><i></i><i></i><i></i></div>
-  <button id="mute" type="button" aria-label="Mute">🔊</button>
-  <span id="actxt">audio</span>
-</div>
-
 <script>
 (function(){
   "use strict";
-  var REPO = "https://raw.githubusercontent.com/animstation/HoodzGui/refs/heads/main/";
-  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------------- pixel rain backdrop ---------------- */
-  var canvas = document.getElementById('rain');
-  var ctx2d = canvas.getContext('2d');
-  var w, h, cols, drops;
-  function resize(){
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-    cols = Math.max(1, Math.floor(w / 14));
-    drops = new Array(cols).fill(0).map(function(){ return Math.random() * -40; });
-  }
-  resize();
-  window.addEventListener('resize', resize);
-  function drawRain(){
-    ctx2d.fillStyle = 'rgba(6,3,5,0.16)';
-    ctx2d.fillRect(0, 0, w, h);
-    for (var i = 0; i < cols; i++){
-      var x = i * 14, y = drops[i] * 14;
-      ctx2d.fillStyle = 'rgba(255,45,58,' + (0.12 + Math.random() * 0.22).toFixed(2) + ')';
-      ctx2d.fillRect(x, y, 8, 8);
-      if (y > h && Math.random() > 0.975) drops[i] = 0;
-      drops[i]++;
-    }
-  }
-  if (!reduceMotion){
-    setInterval(drawRain, 55);
-  } else {
-    ctx2d.fillStyle = 'rgba(6,3,5,1)'; ctx2d.fillRect(0,0,w,h);
-  }
-
-  /* ---------------- rare glitch slice ---------------- */
-  if (!reduceMotion){
-    var glitchEl = document.getElementById('glitch');
-    setInterval(function(){
-      glitchEl.classList.add('active');
-      setTimeout(function(){ glitchEl.classList.remove('active'); }, 160);
-    }, 6000 + Math.random() * 5000);
-  }
-
-  /* ---------------- audio engine ---------------- */
-  var AudioCtx = window.AudioContext || window.webkitAudioContext;
-  var engine = { ready:false, ctx:null, musicGain:null, clickGain:null, master:null,
-                 analyser:null, substanceBuf:null, gtaBuf:null, loopSource:null, muted:false, lastVol:0.5 };
-
-  function fetchBuffer(ctx, url){
-    return fetch(url).then(function(r){
-      if (!r.ok) throw new Error('fetch failed: ' + url);
-      return r.arrayBuffer();
-    }).then(function(ab){ return ctx.decodeAudioData(ab); });
-  }
-
-  function initAudio(){
-    try {
-      engine.ctx = new AudioCtx();
-      engine.master = engine.ctx.createGain();
-      engine.master.gain.value = 0.9;
-      engine.analyser = engine.ctx.createAnalyser();
-      engine.analyser.fftSize = 64;
-      engine.master.connect(engine.analyser);
-      engine.analyser.connect(engine.ctx.destination);
-
-      engine.musicGain = engine.ctx.createGain();
-      engine.musicGain.gain.value = 0.22;
-      engine.clickGain = engine.ctx.createGain();
-      engine.clickGain.gain.value = 0.55;
-      engine.musicGain.connect(engine.master);
-      engine.clickGain.connect(engine.master);
-
-      Promise.all([
-        fetchBuffer(engine.ctx, REPO + 'substance.mp3'),
-        fetchBuffer(engine.ctx, REPO + 'gta.mp3')
-      ]).then(function(bufs){
-        engine.substanceBuf = bufs[0];
-        engine.gtaBuf = bufs[1];
-        engine.ready = true;
-      }).catch(function(err){
-        console.warn('[hoodz] audio preload failed:', err);
+  /* ---- scroll-reveal for each chapter (the one smooth, orchestrated motion) ---- */
+  var chapters = document.querySelectorAll('.chapter');
+  if ('IntersectionObserver' in window && !reduce){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
       });
-    } catch (e) {
-      console.warn('[hoodz] Web Audio unavailable:', e);
+    }, { threshold: 0.12 });
+    chapters.forEach(function(c){ io.observe(c); });
+  } else {
+    chapters.forEach(function(c){ c.classList.add('in'); });
+  }
+
+  /* ---- top progress bar ---- */
+  var bar = document.getElementById('progbar');
+  function updateProgress(){
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var p = max > 0 ? (window.scrollY / max) * 100 : 0;
+    if (bar) bar.style.width = p + '%';
+  }
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  updateProgress();
+
+  /* ---- the example gui: 3D, faces the cursor on a computer, faces scroll on mobile ---- */
+  var mock = document.getElementById('mock');
+  if (mock && !reduce){
+    var fine = window.matchMedia('(pointer: fine)').matches;
+    var rx = 0, ry = 0, tx = 0, ty = 0;
+    function apply(){ mock.style.transform = 'rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)'; }
+    function loop(){
+      rx += (tx - rx) * 0.1;
+      ry += (ty - ry) * 0.1;
+      apply();
+      requestAnimationFrame(loop);
     }
-  }
-  initAudio(); // start fetching/decoding immediately, well before the gate is clicked
-
-  function startLoop(){
-    if (!(engine.ctx && engine.substanceBuf)) return;
-    var src = engine.ctx.createBufferSource();
-    src.buffer = engine.substanceBuf;
-    src.loop = true;
-
-    // underwater: lowpass filter with a slow wobble on the cutoff
-    var filter = engine.ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 650;
-    filter.Q.value = 0.7;
-    var lfo = engine.ctx.createOscillator();
-    lfo.frequency.value = 0.18;
-    var lfoGain = engine.ctx.createGain();
-    lfoGain.gain.value = 220;
-    lfo.connect(lfoGain);
-    lfoGain.connect(filter.frequency);
-    lfo.start();
-
-    src.connect(filter);
-    filter.connect(engine.musicGain);
-    src.start(0);
-    engine.loopSource = src;
-  }
-
-  function playClick(){
-    if (!(engine.ctx && engine.gtaBuf)) return;
-    var src = engine.ctx.createBufferSource();
-    src.buffer = engine.gtaBuf;
-    src.connect(engine.clickGain);
-    src.start(0);
-  }
-
-  // delegated click sound on real interactive elements only
-  document.addEventListener('click', function(e){
-    var el = e.target.closest('a, button, summary, [data-click]');
-    if (el && el.id !== 'connect') playClick();
-  }, true);
-
-  /* ---------------- gate ---------------- */
-  var gate = document.getElementById('gate');
-  var connectBtn = document.getElementById('connect');
-  var granted = document.getElementById('granted');
-  connectBtn.addEventListener('click', function(){
-    if (engine.ctx && engine.ctx.state === 'suspended') engine.ctx.resume();
-    playClick();
-    startLoop();
-    gate.classList.add('gone');
-    if (!reduceMotion){
-      granted.classList.add('show');
-      setTimeout(function(){ granted.classList.remove('show'); }, 1200);
+    if (fine){
+      document.addEventListener('mousemove', function(e){
+        var r = mock.getBoundingClientRect();
+        var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        var dx = (e.clientX - cx) / (window.innerWidth / 2);
+        var dy = (e.clientY - cy) / (window.innerHeight / 2);
+        ty = Math.max(-16, Math.min(16, dx * 16));
+        tx = Math.max(-14, Math.min(14, -dy * 14));
+      });
+    } else {
+      var lastY = window.scrollY;
+      window.addEventListener('scroll', function(){
+        var y = window.scrollY;
+        var vel = y - lastY;
+        lastY = y;
+        var max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        var prog = y / max;
+        tx = Math.max(-12, Math.min(12, vel * 0.5));
+        ty = Math.max(-10, Math.min(10, (prog - 0.5) * 20));
+      }, { passive: true });
     }
-  });
-
-  /* ---------------- mute + live level bars ---------------- */
-  var muteBtn = document.getElementById('mute');
-  var bars = document.querySelectorAll('#bars i');
-  muteBtn.addEventListener('click', function(){
-    if (!engine.master) return;
-    engine.muted = !engine.muted;
-    var now = engine.ctx.currentTime;
-    engine.master.gain.cancelScheduledValues(now);
-    engine.master.gain.linearRampToValueAtTime(engine.muted ? 0 : 0.9, now + 0.08);
-    muteBtn.textContent = engine.muted ? '🔇' : '🔊';
-  });
-
-  var freqData;
-  function tickBars(){
-    requestAnimationFrame(tickBars);
-    if (!(engine.analyser && engine.ctx)) return;
-    if (!freqData) freqData = new Uint8Array(engine.analyser.frequencyBinCount);
-    engine.analyser.getByteFrequencyData(freqData);
-    var step = Math.floor(freqData.length / bars.length);
-    for (var i = 0; i < bars.length; i++){
-      var v = freqData[i * step] || 0;
-      bars[i].style.height = Math.max(3, (v / 255) * 15) + 'px';
-    }
+    loop();
+  } else if (mock) {
+    mock.style.transform = 'none';
   }
-  tickBars();
 
-  /* ---------------- copy buttons ---------------- */
-  document.querySelectorAll('[data-copy]').forEach(function(btn){
-    btn.addEventListener('click', function(ev){
-      ev.stopPropagation();
+  /* ---- copy buttons ---- */
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
       var pre = btn.closest('.term').querySelector('pre');
       var text = pre.innerText;
-      var done = function(){
+      var done = function () {
         var old = btn.textContent;
         btn.textContent = 'copied'; btn.classList.add('done');
-        setTimeout(function(){ btn.textContent = old; btn.classList.remove('done'); }, 1300);
+        setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1300);
       };
-      if (navigator.clipboard && navigator.clipboard.writeText){
+      if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(done, function(){ fallback(text); done(); });
       } else { fallback(text); done(); }
     });
